@@ -9,8 +9,8 @@
 	export let views = 0;
 	export let likes = 0;
 	export let tags = [];
-	export let isPromoted = false; // 프리미엄 리뷰 여부
-	export let type = '리뷰노트'; // 유형 (리뷰노트, 프리미엄 등)
+	export let isPromoted = false; // 기자단 여부
+	export let type = '체험단'; // 유형 (체험단, 기자단 등)
 
 	// 이미지 없는 경우 더미 이미지 표시
 	const hasImages = images && images.length > 0;

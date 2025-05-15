@@ -1,47 +1,47 @@
-<!-- src/lib/stores/reviewStore.js -->
+// src/lib/stores/reviewStore.js
 import { writable } from 'svelte/store';
 
 // 더미 리뷰 데이터 생성 함수
 function createDummyReviews() {
-	const types = ['리뷰노트', '프리미엄'];
+	const types = ['체험단', '기자단'];
 	const titles = [
-		'[제천/청풍사랑] 대고구려 해지국밥',
-		'[서울/종구] 어을 서울',
-		'[인천/용현동] 플차이플랜션',
-		'[건강/다이어트] 폴리오 폴리지 허벌치마사지기',
-		'[경기/화성군] 꽃사이 로컬라운지',
-		'[대구] 윈스 퓨전레스토랑',
-		'[부산/메종드] 키친메종',
-		'[전주] 호성병원'
+		'[더미데이터] 샘플 체험단 모집 1',
+		'[더미데이터] 샘플 기자단 모집 2',
+		'[더미데이터] 음식점 체험 이벤트',
+		'[더미데이터] 신제품 홍보 캠페인',
+		'[더미데이터] 카페 방문 체험단',
+		'[더미데이터] 레스토랑 기자단',
+		'[더미데이터] 신규 매장 체험단',
+		'[더미데이터] 여행지 홍보 기자단'
 	];
 
 	const tags = [
-		['맛집', '국밥', '제천'],
-		['서울', '카페', '디저트'],
-		['인천', '중국집', '짜장면'],
-		['건강', '다이어트', '마사지'],
-		['경기', '카페', '힐링'],
-		['대구', '레스토랑', '데이트'],
-		['부산', '식당', '프랑스'],
-		['전주', '병원', '건강검진']
+		['더미', '체험단', '홍보'],
+		['더미', '기자단', '캠페인'],
+		['더미', '식당', '맛집'],
+		['더미', '제품', '홍보'],
+		['더미', '카페', '음료'],
+		['더미', '식당', '홍보'],
+		['더미', '매장', '오픈'],
+		['더미', '여행', '관광']
 	];
 
 	// 랜덤 숫자 생성 함수
 	const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 
-	// 15개의 더미 리뷰 생성
+	// 20개의 더미 리뷰 생성
 	return Array.from({ length: 20 }, (_, i) => {
 		const titleIndex = i % titles.length;
 		return {
-			id: `review-${i + 1}`,
+			id: `dummy-${i + 1}`,
 			title: titles[titleIndex],
-			content: '리뷰 콘텐츠...',
-			images: Array.from({ length: randomInt(1, 4) }, (_, j) => `image-${j + 1}.jpg`),
+			content: '더미 콘텐츠 내용...',
+			images: Array.from({ length: randomInt(1, 4) }, (_, j) => `dummy-image-${j + 1}.jpg`),
 			daysAgo: randomInt(0, 15),
 			views: randomInt(10, 200),
 			likes: randomInt(0, 50),
 			tags: tags[titleIndex],
-			isPromoted: i % 5 === 0, // 5번째마다 프리미엄 리뷰
+			isPromoted: i % 5 === 0, // 5번째마다 기자단
 			type: i % 5 === 0 ? types[1] : types[0],
 			region: ['서울', '경기', '인천', '강원', '충북', '대전', '전주', '부산'][randomInt(0, 7)]
 		};

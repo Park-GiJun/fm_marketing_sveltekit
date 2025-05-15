@@ -20,7 +20,7 @@
 	<div class="header-container">
 		<div class="logo-wrapper">
 			<a href="/" class="logo">
-				<span class="logo-green">리뷰</span><span class="logo-blue">노트</span>
+				<span class="logo-green">FM</span><span class="logo-blue">Marketing</span>
 			</a>
 		</div>
 
@@ -31,7 +31,7 @@
 				bind:value={searchQuery}
 				on:keydown={(e) => e.key === 'Enter' && handleSearch()}
 			/>
-			<button class="search-button" on:click={handleSearch}>
+			<button class="search-button" on:click={handleSearch} aria-label="검색">
 				<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 					<circle cx="11" cy="11" r="8"></circle>
 					<line x1="21" y1="21" x2="16.65" y2="16.65"></line>
@@ -52,7 +52,7 @@
 			<a href="/login" class="login-button">로그인</a>
 		</div>
 
-		<button class="menu-toggle" on:click={toggleMenu}>
+		<button class="menu-toggle" on:click={toggleMenu} aria-label="메뉴 토글">
 			<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 				<line x1="3" y1="12" x2="21" y2="12"></line>
 				<line x1="3" y1="6" x2="21" y2="6"></line>

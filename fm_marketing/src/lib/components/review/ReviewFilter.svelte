@@ -4,6 +4,7 @@
 	export let currentCategory = '카테고리';
 	export let currentSort = '최신순';
 	export let currentType = '유형';
+	export let currentRegion = '전체';
 
 	// 카테고리 목록
 	const categories = [
@@ -25,14 +26,37 @@
 	// 리뷰 유형
 	const types = [
 		{ id: 'all', name: '유형' },
-		{ id: 'note', name: '리뷰노트' },
-		{ id: 'premium', name: '프리미엄' }
+		{ id: 'experience', name: '체험단' },
+		{ id: 'reporter', name: '기자단' }
+	];
+
+	// 지역 목록
+	const regions = [
+		{ id: 'all', name: '전체' },
+		{ id: 'seoul', name: '서울' },
+		{ id: 'gyeonggi', name: '경기' },
+		{ id: 'incheon', name: '인천' },
+		{ id: 'gangwon', name: '강원' },
+		{ id: 'chungbuk', name: '충북' },
+		{ id: 'chungnam', name: '충남' },
+		{ id: 'daejeon', name: '대전' },
+		{ id: 'sejong', name: '세종' },
+		{ id: 'daegu', name: '대구' },
+		{ id: 'gyeongbuk', name: '경북' },
+		{ id: 'gyeongnam', name: '경남' },
+		{ id: 'busan', name: '부산' },
+		{ id: 'ulsan', name: '울산' },
+		{ id: 'jeonbuk', name: '전북' },
+		{ id: 'jeonnam', name: '전남' },
+		{ id: 'gwangju', name: '광주' },
+		{ id: 'jeju', name: '제주' }
 	];
 
 	// 드롭다운 상태
 	let categoryDropdownOpen = false;
 	let sortDropdownOpen = false;
 	let typeDropdownOpen = false;
+	let regionDropdownOpen = false;
 
 	// 필터 적용 함수
 	function setCategory(category) {
@@ -53,6 +77,12 @@
 		dispatchFilterChange();
 	}
 
+	function setRegion(region) {
+		currentRegion = region.name;
+		regionDropdownOpen = false;
+		dispatchFilterChange();
+	}
+
 	// 필터 변경 이벤트 발생
 	import { createEventDispatcher } from 'svelte';
 	const dispatch = createEventDispatcher();
@@ -61,7 +91,8 @@
 		dispatch('filterChange', {
 			category: currentCategory,
 			sort: currentSort,
-			type: currentType
+			type: currentType,
+			region: currentRegion
 		});
 	}
 
@@ -79,6 +110,10 @@
 
 		if (!targetEl.closest('.type-dropdown') && typeDropdownOpen) {
 			typeDropdownOpen = false;
+		}
+
+		if (!targetEl.closest('.region-dropdown') && regionDropdownOpen) {
+			regionDropdownOpen = false;
 		}
 	}
 
@@ -121,7 +156,7 @@
 			{/if}
 		</div>
 
-		<!-- 리뷰 유형 필터 -->
+		<!-- 마케팅 유형 필터 -->
 		<div class="filter-dropdown type-dropdown">
 			<button
 				class="dropdown-toggle"
@@ -141,6 +176,32 @@
 							on:click={() => setType(type)}
 						>
 							{type.name}
+						</button>
+					{/each}
+				</div>
+			{/if}
+		</div>
+
+		<!-- 지역 필터 -->
+		<div class="filter-dropdown region-dropdown">
+			<button
+				class="dropdown-toggle"
+				on:click={() => regionDropdownOpen = !regionDropdownOpen}
+			>
+				{currentRegion}
+				<svg xmlns="http://www.w3.org/2000/svg" class="dropdown-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<polyline points="6 9 12 15 18 9"></polyline>
+				</svg>
+			</button>
+
+			{#if regionDropdownOpen}
+				<div class="dropdown-menu region-menu">
+					{#each regions as region}
+						<button
+							class="dropdown-item {currentRegion === region.name ? 'active' : ''}"
+							on:click={() => setRegion(region)}
+						>
+							{region.name}
 						</button>
 					{/each}
 				</div>
@@ -232,6 +293,11 @@
         overflow: hidden;
     }
 
+    .region-menu {
+        max-height: 300px;
+        overflow-y: auto;
+    }
+
     .dropdown-item {
         display: block;
         width: 100%;
@@ -253,7 +319,7 @@
         font-weight: 500;
     }
 
-    @media (max-width: 640px) {
+    @media (max-width: 768px) {
         .filter-container {
             flex-direction: column;
             align-items: flex-start;
@@ -262,7 +328,7 @@
 
         .filter-section {
             width: 100%;
-            justify-content: space-between;
+            flex-wrap: wrap;
         }
 
         .dropdown-toggle {

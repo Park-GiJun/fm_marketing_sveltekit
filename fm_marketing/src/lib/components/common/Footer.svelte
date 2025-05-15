@@ -33,7 +33,7 @@
 	<div class="footer-container">
 		<div class="footer-top">
 			<div class="footer-logo">
-				<span class="logo-green">리뷰</span><span class="logo-blue">노트</span>
+				<span class="logo-green">FM</span><span class="logo-blue">Marketing</span>
 			</div>
 
 			<div class="footer-links">
@@ -46,13 +46,13 @@
 		<div class="footer-middle">
 			<div class="company-info">
 				<p>
-					<strong>회사명:</strong> (주)리뷰노트 | <strong>대표:</strong> 홍길동 | <strong>사업자등록번호:</strong> 123-45-67890
+					<strong>회사명:</strong> (주)FMMarketing | <strong>대표:</strong> 홍길동 | <strong>사업자등록번호:</strong> 123-45-67890
 				</p>
 				<p>
-					<strong>주소:</strong> 서울특별시 강남구 테헤란로 123, 리뷰노트빌딩
+					<strong>주소:</strong> 서울특별시 강남구 테헤란로 123, FMMarketing빌딩
 				</p>
 				<p>
-					<strong>이메일:</strong> support@reviewnote.com | <strong>전화:</strong> 02-123-4567
+					<strong>이메일:</strong> support@fmmarketing.com | <strong>전화:</strong> 02-123-4567
 				</p>
 			</div>
 
@@ -67,7 +67,7 @@
 
 		<div class="footer-bottom">
 			<div class="copyright">
-				&copy; {currentYear} 리뷰노트. All rights reserved.
+				&copy; {currentYear} FMMarketing. All rights reserved.
 			</div>
 		</div>
 	</div>

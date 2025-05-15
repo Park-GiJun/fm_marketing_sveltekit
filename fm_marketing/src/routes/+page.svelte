@@ -27,8 +27,8 @@
 </script>
 
 <svelte:head>
-	<title>리뷰노트 - 지역별 체험단 리뷰 플랫폼</title>
-	<meta name="description" content="전국 각지의 맛집, 체험, 여행 리뷰를 한 곳에서 확인하세요. 리뷰노트에서 다양한 체험단 활동에 참여해보세요!" />
+	<title>FMMarketing - 지역별 체험단 마케팅 플랫폼</title>
+	<meta name="description" content="전국 각지의 맛집, 체험, 여행 마케팅을 한 곳에서 확인하세요. FMMarketing에서 다양한 체험단 활동에 참여해보세요!" />
 </svelte:head>
 
 <MainLayout bind:selectedRegion on:regionSelect={handleRegionChange}>

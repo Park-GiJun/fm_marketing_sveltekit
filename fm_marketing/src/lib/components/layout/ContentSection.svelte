@@ -6,7 +6,7 @@
 	import { onMount } from 'svelte';
 
 	// props
-	export let title = "리뷰 목록";
+	export let title = "마케팅 목록";
 	export let showFilter = true;
 	export let region = '전체';
 
@@ -18,20 +18,28 @@
 	let category = '카테고리';
 	let sortOption = '최신순';
 	let type = '유형';
+	let currentRegion = region;
 
 	// 필터 변경 핸들러
 	function handleFilterChange(e) {
-		const { category: newCategory, sort: newSort, type: newType } = e.detail;
+		const { category: newCategory, sort: newSort, type: newType, region: newRegion } = e.detail;
 
 		category = newCategory;
 		sortOption = newSort;
 		type = newType;
+		
+		// 지역이 변경되었다면 업데이트
+		if (newRegion && newRegion !== currentRegion) {
+			currentRegion = newRegion;
+			reviewStore.fetchReviewsByRegion(newRegion);
+		}
 
 		// 스토어에 필터 적용
 		reviewStore.applyFilter({
 			category,
 			sort: sortOption,
-			type
+			type,
+			region: currentRegion
 		});
 	}
 
@@ -41,12 +49,14 @@
 			reviewStore.fetchReviews();
 		} else {
 			reviewStore.fetchReviewsByRegion(region);
+			currentRegion = region;
 		}
 	});
 
 	// region prop 변경 시 데이터 다시 로드
-	$: if (region) {
+	$: if (region !== currentRegion) {
 		reviewStore.fetchReviewsByRegion(region);
+		currentRegion = region;
 	}
 </script>
 
@@ -59,6 +69,7 @@
 				currentCategory={category}
 				currentSort={sortOption}
 				currentType={type}
+				currentRegion={currentRegion}
 				on:filterChange={handleFilterChange}
 			/>
 		{/if}

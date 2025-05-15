@@ -1,3 +1,12 @@
+<script>
+	import ReviewCard from './ReviewCard.svelte';
+	
+	// Props
+	export let reviews = [];
+	export let loading = false;
+	export let columns = 4;
+</script>
+
 <div class="review-list-container">
 	{#if loading}
 		<div class="loading-indicator">로딩 중...</div>

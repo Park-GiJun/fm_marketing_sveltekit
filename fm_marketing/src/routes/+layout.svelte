@@ -12,22 +12,3 @@
 </script>
 
 <slot></slot>
-
-<style>
-    :global(body) {
-        font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-        background-color: #f9fafb;
-        color: #1f2937;
-        margin: 0;
-        padding: 0;
-    }
-
-    :global(*) {
-        box-sizing: border-box;
-    }
-
-    :global(a) {
-        text-decoration: none;
-        color: inherit;
-    }
-</style>
