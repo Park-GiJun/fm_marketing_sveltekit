@@ -1,40 +1,33 @@
+<!-- src/routes/+layout.svelte -->
 <script>
-  import PCHeader from '$lib/components/pc/PCHeader.svelte';
-  import PCFooter from '$lib/components/pc/PCFooter.svelte';
+	// 전체 레이아웃 스타일
+	import '../app.css';
+	import { reviewStore } from '$lib/stores/reviewStore.js';
+	import { onMount } from 'svelte';
+
+	// 페이지 로드 시 초기 리뷰 데이터 로드
+	onMount(() => {
+		reviewStore.fetchReviews();
+	});
 </script>
 
-<div class="pc-layout">
-  <PCHeader />
-  <main>
-    <slot></slot>
-  </main>
-  <PCFooter />
-</div>
+<slot></slot>
 
 <style>
-  :global(body) {
-    margin: 0;
-    padding: 0;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-    background-color: #f9fafb; /* gray-50 */
-    color: #1f2937; /* gray-800 */
-  }
-  
-  :global(a) {
-    text-decoration: none;
-  }
-  
-  :global(h1, h2, h3, h4, h5, h6) {
-    margin-top: 0;
-  }
-  
-  .pc-layout {
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
-  }
-  
-  main {
-    flex: 1;
-  }
+    :global(body) {
+        font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+        background-color: #f9fafb;
+        color: #1f2937;
+        margin: 0;
+        padding: 0;
+    }
+
+    :global(*) {
+        box-sizing: border-box;
+    }
+
+    :global(a) {
+        text-decoration: none;
+        color: inherit;
+    }
 </style>

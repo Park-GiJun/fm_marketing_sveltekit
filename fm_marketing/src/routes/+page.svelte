@@ -1,271 +1,120 @@
+<!-- src/routes/+page.svelte -->
 <script>
-  // 기존 Slider 및 GridGallery 컴포넌트 대신 직접 구현
+	import MainLayout from '$lib/components/layout/MainLayout.svelte';
+	import ContentSection from '$lib/components/layout/ContentSection.svelte';
+	import Badge from '$lib/components/common/Badge.svelte';
+	import Button from '$lib/components/common/Button.svelte';
+	import { reviewStore } from '$lib/stores/reviewStore.js';
+
+	// 현재 선택된 지역
+	let selectedRegion = '전체';
+
+	// 지역 변경 핸들러
+	function handleRegionChange(event) {
+		selectedRegion = event.detail;
+
+		// 지역에 따른 리뷰 데이터 로드
+		reviewStore.fetchReviewsByRegion(selectedRegion);
+	}
+
+	// 간단한 배너 데이터
+	const banner = {
+		title: '체험단 모집 중',
+		description: '다양한 지역의 맛집, 카페, 체험을 무료로 경험해보세요!',
+		buttonText: '체험단 신청하기',
+		buttonLink: '/apply'
+	};
 </script>
 
 <svelte:head>
-  <title>FM 마케팅 - 홈</title>
+	<title>리뷰노트 - 지역별 체험단 리뷰 플랫폼</title>
+	<meta name="description" content="전국 각지의 맛집, 체험, 여행 리뷰를 한 곳에서 확인하세요. 리뷰노트에서 다양한 체험단 활동에 참여해보세요!" />
 </svelte:head>
 
-<!-- 슬라이더 섹션 -->
-<section class="slider-section">
-  <div class="hero-slider">
-    <div class="slide active">
-      <div class="slide-content">
-        <h2>효과적인 마케팅 전략</h2>
-        <p>귀사의 비즈니스에 맞는 최적의 마케팅 전략을 제공합니다.</p>
-        <a href="/services" class="btn btn-primary">자세히 보기</a>
-      </div>
-    </div>
-  </div>
-</section>
+<MainLayout bind:selectedRegion on:regionSelect={handleRegionChange}>
+	<!-- 배너 섹션 -->
+	<section class="banner-section">
+		<div class="banner-content">
+			<h1 class="banner-title">{banner.title}</h1>
+			<p class="banner-description">{banner.description}</p>
+			<a href={banner.buttonLink} class="banner-button">
+				<Button variant="primary" size="lg">
+					{banner.buttonText}
+				</Button>
+			</a>
+		</div>
 
-<!-- 다양한 성공 사례 섹션 -->
-<section class="success-cases">
-  <div class="container">
-    <h2 class="section-title">다양한 성공 사례</h2>
-    <p class="section-desc">다양한 업종에서의 성공적인 마케팅 사례를 확인하세요.</p>
-    
-    <a href="/cases" class="btn">사례 보기</a>
-  </div>
-</section>
+		<div class="banner-image">
+			<!-- 이미지 placeholder -->
+			<div class="image-placeholder"></div>
+		</div>
+	</section>
 
-<!-- 최신 콘텐츠 섹션 -->
-<section class="latest-content">
-  <div class="container">
-    <h2 class="section-title">최신 콘텐츠</h2>
-    
-    <div class="content-grid">
-      <!-- 콘텐츠 아이템 1 -->
-      <div class="content-item">
-        <div class="content-img"></div>
-        <div class="content-info">
-          <div class="content-meta">
-            <span class="content-category">가이드</span>
-            <span class="content-date">2025-04-10</span>
-          </div>
-          <h3 class="content-title">디지털 마케팅 전략 가이드</h3>
-          <a href="/content/1" class="content-link">자세히 보기 →</a>
-        </div>
-      </div>
-      
-      <!-- 콘텐츠 아이템 2 -->
-      <div class="content-item">
-        <div class="content-img"></div>
-        <div class="content-info">
-          <div class="content-meta">
-            <span class="content-category">사례 연구</span>
-            <span class="content-date">2025-04-05</span>
-          </div>
-          <h3 class="content-title">SNS 마케팅 성공 사례 분석</h3>
-          <a href="/content/2" class="content-link">자세히 보기 →</a>
-        </div>
-      </div>
-      
-      <!-- 콘텐츠 아이템 3 -->
-      <div class="content-item">
-        <div class="content-img"></div>
-        <div class="content-info">
-          <div class="content-meta">
-            <span class="content-category">팁</span>
-            <span class="content-date">2025-03-28</span>
-          </div>
-          <h3 class="content-title">이메일 마케팅 최적화 방법</h3>
-          <a href="/content/3" class="content-link">자세히 보기 →</a>
-        </div>
-      </div>
-    </div>
-    
-    <div class="content-action">
-      <a href="/contents" class="btn btn-primary">모든 콘텐츠 보기</a>
-    </div>
-  </div>
-</section>
+	<!-- 최근 리뷰 섹션 -->
+	<ContentSection
+		title="최근 등록된 리뷰"
+		showFilter={true}
+		region={selectedRegion}
+	/>
+
+	<!-- 인기 리뷰 섹션 -->
+	<ContentSection
+		title="인기 있는 체험단"
+		showFilter={false}
+		region={selectedRegion}
+	/>
+</MainLayout>
 
 <style>
-  /* 슬라이더 섹션 스타일 */
-  .slider-section {
-    margin-bottom: 2.5rem;
-  }
-  
-  .hero-slider {
-    position: relative;
-    height: 500px;
-    background-color: #0284c7; /* sky-600 */
-    color: white;
-    overflow: hidden;
-  }
-  
-  .slide {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    padding: 2rem;
-    opacity: 0;
-    transition: opacity 0.5s ease;
-  }
-  
-  .slide.active {
-    opacity: 1;
-  }
-  
-  .slide-content {
-    max-width: 800px;
-  }
-  
-  .slide-content h2 {
-    font-size: 2.5rem;
-    font-weight: bold;
-    margin-bottom: 1rem;
-  }
-  
-  .slide-content p {
-    font-size: 1.25rem;
-    margin-bottom: 1.5rem;
-    opacity: 0.9;
-  }
-  
-  /* 성공 사례 섹션 */
-  .success-cases {
-    padding: 4rem 0;
-    background-color: #f0f9ff; /* sky-50 */
-    text-align: center;
-  }
-  
-  /* 최신 콘텐츠 섹션 */
-  .latest-content {
-    padding: 4rem 0;
-  }
-  
-  .section-title {
-    font-size: 1.5rem;
-    font-weight: bold;
-    color: #075985; /* sky-800 */
-    margin-bottom: 1.5rem;
-  }
-  
-  .section-desc {
-    font-size: 1.125rem;
-    color: #4b5563; /* gray-600 */
-    margin-bottom: 2rem;
-  }
-  
-  .content-grid {
-    display: grid;
-    grid-template-columns: repeat(1, 1fr);
-    gap: 1.5rem;
-    margin-bottom: 2rem;
-  }
-  
-  @media (min-width: 640px) {
-    .content-grid {
-      grid-template-columns: repeat(2, 1fr);
+    .banner-section {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 2rem;
+        margin-bottom: 3rem;
+        padding: 2rem;
+        background-color: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     }
-  }
-  
-  @media (min-width: 1024px) {
-    .content-grid {
-      grid-template-columns: repeat(3, 1fr);
+
+    .banner-content {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
     }
-  }
-  
-  .content-item {
-    background-color: white;
-    border-radius: 0.5rem;
-    overflow: hidden;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    transition: box-shadow 0.3s ease;
-  }
-  
-  .content-item:hover {
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  }
-  
-  .content-img {
-    height: 12rem;
-    background-color: #e5e7eb; /* gray-200 */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  
-  .content-info {
-    padding: 1rem;
-  }
-  
-  .content-meta {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.5rem;
-  }
-  
-  .content-category {
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: #0284c7; /* sky-600 */
-  }
-  
-  .content-date {
-    font-size: 0.75rem;
-    color: #6b7280; /* gray-500 */
-  }
-  
-  .content-title {
-    font-size: 1.125rem;
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-  }
-  
-  .content-link {
-    font-size: 0.875rem;
-    color: #0369a1; /* sky-700 */
-    text-decoration: none;
-  }
-  
-  .content-link:hover {
-    text-decoration: underline;
-  }
-  
-  .content-action {
-    text-align: center;
-    margin-top: 2rem;
-  }
-  
-  /* 기본 스타일 재정의 */
-  .container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 1rem;
-  }
-  
-  .btn {
-    display: inline-block;
-    padding: 0.5rem 1rem;
-    border-radius: 0.375rem;
-    font-weight: 500;
-    background-color: transparent;
-    color: #0284c7; /* sky-600 */
-    border: 1px solid #0284c7;
-    text-decoration: none;
-    transition: all 0.3s ease;
-    cursor: pointer;
-  }
-  
-  .btn:hover {
-    background-color: rgba(2, 132, 199, 0.1); /* sky-600 with opacity */
-  }
-  
-  .btn-primary {
-    background-color: #0284c7; /* sky-600 */
-    color: white;
-    border: 1px solid #0284c7;
-  }
-  
-  .btn-primary:hover {
-    background-color: #0369a1; /* sky-700 */
-    border-color: #0369a1;
-  }
+
+    .banner-title {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #1f2937;
+        margin: 0 0 1rem 0;
+    }
+
+    .banner-description {
+        font-size: 1.125rem;
+        color: #4b5563;
+        margin: 0 0 1.5rem 0;
+        line-height: 1.5;
+    }
+
+    .banner-image {
+        width: 100%;
+        height: 100%;
+        min-height: 200px;
+    }
+
+    .image-placeholder {
+        width: 100%;
+        height: 100%;
+        min-height: 200px;
+        background-color: #e5e7eb;
+        border-radius: 0.5rem;
+    }
+
+    @media (min-width: 768px) {
+        .banner-section {
+            grid-template-columns: 1fr 1fr;
+            align-items: center;
+        }
+    }
 </style>
