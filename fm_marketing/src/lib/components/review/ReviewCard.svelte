@@ -125,6 +125,20 @@
         display: flex;
         align-items: center;
         justify-content: center;
+        position: relative;
+    }
+    
+    .image-placeholder::before {
+        content: "이미지 준비 중";
+        font-size: 0.75rem;
+        color: #9ca3af;
+    }
+    
+    .image-placeholder::after {
+        content: "📸";
+        font-size: 1.5rem;
+        position: absolute;
+        opacity: 0.2;
     }
 
     .card-content {

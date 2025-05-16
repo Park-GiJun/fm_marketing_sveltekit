@@ -175,10 +175,22 @@
     }
 
     .login-button {
-        color: #4c96d7;
-        text-decoration: none;
+        display: inline-flex;
+        padding: 0.5rem 1rem;
+        background-color: #5ce0c6; /* 민트색 */
+        color: white;
         font-size: 0.875rem;
         font-weight: 500;
+        border-radius: 0.375rem;
+        transition: all 0.2s;
+        text-decoration: none;
+        box-shadow: 0 1px 3px rgba(92, 224, 198, 0.3);
+    }
+
+    .login-button:hover {
+        background-color: #4bc0a9;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 6px rgba(92, 224, 198, 0.3);
     }
 
     .menu-toggle {

@@ -203,7 +203,12 @@
                 </div>
               {:else}
                 <div class="no-image">
-                  <p>이미지가 없습니다.</p>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                    <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                    <polyline points="21 15 16 10 5 21"></polyline>
+                  </svg>
+                  <p>이미지 준비 중입니다</p>
                 </div>
               {/if}
             </div>
@@ -530,10 +535,22 @@
     height: 300px;
     background-color: #f3f4f6;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     color: #9ca3af;
     border-radius: 0.5rem;
+    border: 2px dashed #e5e7eb;
+  }
+  
+  .no-image svg {
+    margin-bottom: 1rem;
+    opacity: 0.6;
+  }
+  
+  .no-image p {
+    font-size: 0.875rem;
+    font-weight: 500;
   }
   
   /* 섹션 스타일 */
@@ -642,6 +659,13 @@
     margin-bottom: 1.5rem;
   }
   
+  .card-actions {
+    margin-bottom: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  
   .info-row {
     display: flex;
     justify-content: space-between;
@@ -680,6 +704,9 @@
     color: #6b7280;
     text-align: center;
     margin-top: 0.5rem;
+    background-color: #f3f4f6;
+    padding: 0.5rem;
+    border-radius: 0.25rem;
   }
   
   .contact-info {

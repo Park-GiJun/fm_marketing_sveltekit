@@ -11,10 +11,10 @@
 
 	// 각 variant별 스타일 클래스
 	const variants = {
-		primary: 'bg-primary-mint hover:bg-primary-mintDark text-white border-primary-mint',
-		secondary: 'bg-primary-pink hover:bg-primary-pinkDark text-white border-primary-pink',
-		outline: 'bg-transparent hover:bg-gray-50 text-gray-700 border-gray-300',
-		text: 'bg-transparent hover:bg-gray-50 text-gray-700 border-transparent'
+		primary: 'bg-blue-500 hover:bg-blue-600 text-white border-blue-500 shadow-blue-200',
+		secondary: 'bg-pink-500 hover:bg-pink-600 text-white border-pink-500 shadow-pink-200',
+		outline: 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300 hover:border-gray-400',
+		text: 'bg-transparent hover:bg-gray-50 text-gray-700 border-transparent shadow-none'
 	};
 
 	// 각 size별 스타일 클래스
@@ -59,6 +59,17 @@
         transition: all 0.2s;
         cursor: pointer;
         white-space: nowrap;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .button:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .button:active:not(:disabled) {
+        transform: translateY(0);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
     }
 
     .button:disabled {

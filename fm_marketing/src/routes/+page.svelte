@@ -107,8 +107,27 @@
         width: 100%;
         height: 100%;
         min-height: 200px;
-        background-color: #e5e7eb;
+        background-color: #f3f4f6;
         border-radius: 0.5rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        border: 2px dashed #e5e7eb;
+        color: #9ca3af;
+        position: relative;
+    }
+    
+    .image-placeholder::before {
+        content: "메인 배너 이미지 준비 중";
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+    
+    .image-placeholder::after {
+        content: "📸";
+        font-size: 2rem;
+        margin-top: 0.5rem;
     }
 
     @media (min-width: 768px) {
