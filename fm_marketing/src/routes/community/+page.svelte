@@ -274,7 +274,7 @@
   }
   
   .category-tab.active {
-    background-color: #4c96d7;
+    background-color: #5ce0c6; /* 민트색 */
     color: white;
   }
   
@@ -305,7 +305,7 @@
   
   .sort-option.active {
     font-weight: 600;
-    color: #4c96d7;
+    color: #ff7eb6; /* 핑크색 */
   }
   
   .community-content {
@@ -338,7 +338,7 @@
     width: 5rem;
     font-size: 0.75rem;
     font-weight: 500;
-    color: #4c96d7;
+    color: #ff7eb6; /* 핑크색 */
     padding-top: 0.25rem;
   }
   
@@ -360,7 +360,7 @@
   }
   
   .post-title-link:hover .post-title {
-    color: #4c96d7;
+    color: #5ce0c6; /* 민트색 */
   }
   
   .post-meta {

@@ -102,11 +102,11 @@
     }
 
     .logo-green {
-        color: #6bb546;
+        color: #5ce0c6; /* 민트색 */
     }
 
     .logo-blue {
-        color: #4c96d7;
+        color: #ff7eb6; /* 핑크색 */
     }
 
     .footer-links {

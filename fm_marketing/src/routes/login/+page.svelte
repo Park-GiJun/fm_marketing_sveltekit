@@ -162,11 +162,11 @@
   }
   
   .logo-green {
-    color: #6bb546;
+    color: #5ce0c6; /* 민트색 */
   }
   
   .logo-blue {
-    color: #4c96d7;
+    color: #ff7eb6; /* 핑크색 */
   }
   
   .login-subtitle {
@@ -209,8 +209,8 @@
   
   .form-group input:focus {
     outline: none;
-    border-color: #4c96d7;
-    box-shadow: 0 0 0 2px rgba(76, 150, 215, 0.2);
+    border-color: #5ce0c6; /* 민트색 */
+    box-shadow: 0 0 0 2px rgba(92, 224, 198, 0.2);
   }
   
   .form-check {
@@ -245,7 +245,7 @@
   }
   
   .form-link:hover {
-    color: #4c96d7;
+    color: #ff7eb6; /* 핑크색 */
     text-decoration: underline;
   }
   

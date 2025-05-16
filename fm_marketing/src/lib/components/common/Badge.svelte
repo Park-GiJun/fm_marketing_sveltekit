@@ -11,12 +11,12 @@
 			text: 'text-gray-800'
 		},
 		primary: {
-			bg: 'bg-blue-100',
-			text: 'text-blue-800'
+			bg: 'bg-primary-mintLight',
+			text: 'text-primary-mintDark'
 		},
 		secondary: {
-			bg: 'bg-purple-100',
-			text: 'text-purple-800'
+			bg: 'bg-primary-pinkLight',
+			text: 'text-primary-pinkDark'
 		},
 		success: {
 			bg: 'bg-green-100',
@@ -31,12 +31,12 @@
 			text: 'text-red-800'
 		},
 		review: {
-			bg: 'bg-green-100',
-			text: 'text-green-800'
+			bg: 'bg-primary-mintLight',
+			text: 'text-primary-mintDark'
 		},
 		premium: {
-			bg: 'bg-blue-100',
-			text: 'text-blue-800'
+			bg: 'bg-primary-pinkLight',
+			text: 'text-primary-pinkDark'
 		}
 	};
 

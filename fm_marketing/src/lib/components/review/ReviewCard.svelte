@@ -97,7 +97,7 @@
     }
 
     .normal-badge {
-        background-color: #6bb546;
+        background-color: #5ce0c6; /* 민트색 */
         color: white;
         font-size: 0.75rem;
         padding: 0.25rem 0.5rem;
@@ -105,7 +105,7 @@
     }
 
     .premium-badge {
-        background-color: #4c96d7;
+        background-color: #ff7eb6; /* 핑크색 */
         color: white;
         font-size: 0.75rem;
         padding: 0.25rem 0.5rem;
@@ -204,7 +204,7 @@
 
     .price {
         font-weight: 600;
-        color: #6bb546;
+        color: #5ce0c6; /* 민트색 */
         font-size: 0.875rem;
     }
 
@@ -216,7 +216,7 @@
 
     .discounted-price {
         font-weight: 600;
-        color: #4c96d7;
+        color: #ff7eb6; /* 핑크색 */
         font-size: 0.875rem;
     }
 

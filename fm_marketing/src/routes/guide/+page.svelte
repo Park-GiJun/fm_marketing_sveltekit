@@ -254,8 +254,8 @@
   }
   
   .tab-button.active {
-    color: #4c96d7;
-    border-bottom-color: #4c96d7;
+    color: #5ce0c6; /* 민트색 */
+    border-bottom-color: #5ce0c6;
   }
   
   .category-filter {
@@ -281,7 +281,7 @@
   }
   
   .category-button.active {
-    background-color: #4c96d7;
+    background-color: #ff7eb6; /* 핑크색 */
     color: white;
   }
   
@@ -335,7 +335,7 @@
   .guide-category {
     display: inline-block;
     font-size: 0.75rem;
-    color: #4c96d7;
+    color: #ff7eb6; /* 핑크색 */
     margin-bottom: 0.5rem;
   }
   

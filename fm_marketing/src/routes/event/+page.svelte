@@ -196,8 +196,8 @@
   }
   
   .tab-button.active {
-    color: #4c96d7;
-    border-bottom-color: #4c96d7;
+    color: #5ce0c6; /* 민트색 */
+    border-bottom-color: #5ce0c6;
   }
   
   .tab-content {
@@ -337,7 +337,7 @@
     font-size: 0.75rem;
     font-weight: 500;
     border-radius: 0.25rem;
-    background-color: #4c96d7;
+    background-color: #5ce0c6; /* 민트색 */
     color: white;
   }
   

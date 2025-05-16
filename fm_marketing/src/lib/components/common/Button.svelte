@@ -11,8 +11,8 @@
 
 	// 각 variant별 스타일 클래스
 	const variants = {
-		primary: 'bg-blue-600 hover:bg-blue-700 text-white border-blue-600',
-		secondary: 'bg-gray-600 hover:bg-gray-700 text-white border-gray-600',
+		primary: 'bg-primary-mint hover:bg-primary-mintDark text-white border-primary-mint',
+		secondary: 'bg-primary-pink hover:bg-primary-pinkDark text-white border-primary-pink',
 		outline: 'bg-transparent hover:bg-gray-50 text-gray-700 border-gray-300',
 		text: 'bg-transparent hover:bg-gray-50 text-gray-700 border-transparent'
 	};

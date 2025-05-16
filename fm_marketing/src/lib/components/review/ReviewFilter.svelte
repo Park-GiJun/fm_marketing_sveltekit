@@ -315,7 +315,7 @@
     }
 
     .dropdown-item.active {
-        color: #4c96d7;
+        color: #5ce0c6; /* 민트색 */
         font-weight: 500;
     }
 

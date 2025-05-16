@@ -34,10 +34,19 @@ a {
 }
 
 .btn-primary {
-  background-color: #0284c7; /* sky-600 */
+  background-color: #5ce0c6; /* mint */
   color: white;
 }
 
 .btn-primary:hover {
-  background-color: #0369a1; /* sky-700 */
+  background-color: #3aaa94; /* mint-dark */
+}
+
+.btn-secondary {
+  background-color: #ff7eb6; /* pink */
+  color: white;
+}
+
+.btn-secondary:hover {
+  background-color: #d6558e; /* pink-dark */
 }

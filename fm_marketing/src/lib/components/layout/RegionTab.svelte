@@ -75,7 +75,7 @@
     }
 
     .region-tab.active {
-        background-color: #4c96d7;
+        background-color: #5ce0c6; /* 민트색 */
         color: white;
     }
 
