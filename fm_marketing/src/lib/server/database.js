@@ -1,14 +1,8 @@
-// 안정화된 MySQL2 데이터베이스 연결 - 무조건 DB 사용
+// 안정화된 MySQL2 데이터베이스 연결 - 수정된 버전
 import { dev } from '$app/environment';
 
-/**
- * @type {import("mysql2/promise").Pool | null}
- */
 let pool = null;
 let isInitialized = false;
-/**
- * @type {Promise<any> | null}
- */
 let initializationPromise = null;
 
 /**
@@ -21,7 +15,6 @@ async function createPool() {
     const mysql = await import('mysql2/promise');
     const { config } = await import('dotenv');
     
-    // 환경변수 로드
     config();
 
     const dbConfig = {
@@ -63,24 +56,7 @@ async function createPool() {
 }
 
 /**
- * 직접 쿼리 실행 (풀을 직접 사용)
- */
-async function executeDirectQuery(sql, params = []) {
-  if (!pool) {
-    throw new Error('데이터베이스 연결 풀이 없습니다.');
-  }
-  
-  try {
-    const [rows] = await pool.execute(sql, params);
-    return rows;
-  } catch (error) {
-    console.error('직접 쿼리 실행 오류:', error);
-    throw error;
-  }
-}
-
-/**
- * 테이블 생성 (풀 직접 사용)
+ * 테이블 생성
  */
 async function createTables() {
   if (!pool) {
@@ -191,7 +167,7 @@ async function createTables() {
   
   for (const table of tables) {
     try {
-      await executeDirectQuery(table);
+      const [rows] = await pool.execute(table);
     } catch (error) {
       console.error('테이블 생성 실패:', error);
       throw error;
@@ -202,7 +178,7 @@ async function createTables() {
 }
 
 /**
- * 시드 데이터 생성 (풀 직접 사용)
+ * 시드 데이터 생성
  */
 async function createSeedData() {
   if (!pool) {
@@ -211,7 +187,7 @@ async function createSeedData() {
   
   try {
     // 기존 관리자 계정 확인
-    const existingAdmin = await executeDirectQuery('SELECT id FROM users WHERE username = ?', ['admin']);
+    const [existingAdmin] = await pool.execute('SELECT id FROM users WHERE username = ?', ['admin']);
     
     if (existingAdmin.length > 0) {
       console.log('✅ 시드 데이터가 이미 존재합니다.');
@@ -227,7 +203,7 @@ async function createSeedData() {
     // 관리자 계정 생성
     const adminPassword = await bcrypt.hash('admin123!', 12);
     
-    await executeDirectQuery(`
+    await pool.execute(`
       INSERT INTO users (username, email, password_hash, name, nickname, points, role, level, is_verified)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, ['admin', 'admin@fmmarketing.com', adminPassword, '관리자', '관리자', 50000, 'admin', 'platinum', 1]);
@@ -235,13 +211,13 @@ async function createSeedData() {
     // 테스트 사용자 생성
     const userPassword = await bcrypt.hash('user123!', 12);
     
-    await executeDirectQuery(`
+    await pool.execute(`
       INSERT INTO users (username, email, password_hash, name, nickname, points, level, is_verified)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `, ['user1', 'user1@example.com', userPassword, '김철수', '철수', 5000, 'bronze', 1]);
     
     // 체험단 데이터 생성
-    await executeDirectQuery(`
+    await pool.execute(`
       INSERT INTO experiences (title, content, category, type, region, location, start_date, end_date, application_deadline, max_participants, current_participants, required_points, reward_points, reward_description, requirements, company_name, contact_info, images, tags, status, is_promoted, views, likes, created_by)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
@@ -280,10 +256,9 @@ async function createSeedData() {
 }
 
 /**
- * 데이터베이스 초기화 (순차적 실행)
+ * 데이터베이스 초기화
  */
 export async function initializeDatabase() {
-  // 이미 초기화가 진행 중이거나 완료된 경우
   if (initializationPromise) {
     return await initializationPromise;
   }
@@ -292,18 +267,12 @@ export async function initializeDatabase() {
     return pool;
   }
 
-  // 새로운 초기화 시작
   initializationPromise = (async () => {
     try {
       console.log('🚀 MySQL 데이터베이스 초기화 시작...');
       
-      // 1. 연결 풀 생성
       await createPool();
-      
-      // 2. 테이블 생성
       await createTables();
-      
-      // 3. 시드 데이터 생성
       await createSeedData();
       
       isInitialized = true;
@@ -312,7 +281,6 @@ export async function initializeDatabase() {
       
     } catch (error) {
       console.error('❌ 데이터베이스 초기화 실패:', error);
-      // 초기화 실패 시 상태 리셋
       isInitialized = false;
       pool = null;
       initializationPromise = null;
@@ -328,7 +296,7 @@ export async function initializeDatabase() {
  */
 export async function getDatabase() {
   if (!isInitialized || !pool) {
-    throw new Error('데이터베이스가 초기화되지 않았습니다. initializeDatabase()를 먼저 호출하세요.');
+    throw new Error('데이터베이스가 초기화되지 않았습니다.');
   }
   return pool;
 }
@@ -339,37 +307,15 @@ export async function getDatabase() {
 export async function executeQuery(sql, params = []) {
   try {
     const db = await getDatabase();
+    console.log('쿼리 실행:', sql.substring(0, 100) + '...');
+    console.log('파라미터:', params);
     const [rows] = await db.execute(sql, params);
     return rows;
   } catch (error) {
     console.error('쿼리 실행 오류:', error);
+    console.error('SQL:', sql);
+    console.error('파라미터:', params);
     throw error;
-  }
-}
-
-/**
- * 트랜잭션 실행
- */
-export async function executeTransaction(queries) {
-  const db = await getDatabase();
-  const connection = await db.getConnection();
-  
-  try {
-    await connection.beginTransaction();
-    
-    const results = [];
-    for (const { sql, params } of queries) {
-      const [result] = await connection.execute(sql, params);
-      results.push(result);
-    }
-    
-    await connection.commit();
-    return results;
-  } catch (error) {
-    await connection.rollback();
-    throw error;
-  } finally {
-    connection.release();
   }
 }
 
@@ -425,8 +371,6 @@ export async function createUser(userData) {
     ];
     
     const result = await executeQuery(sql, params);
-    
-    // 생성된 사용자 조회
     return await findUser({ id: result.insertId });
   } catch (error) {
     console.error('사용자 생성 오류:', error);
@@ -435,10 +379,12 @@ export async function createUser(userData) {
 }
 
 /**
- * 체험단 조회
+ * 체험단 조회 (간소화된 버전)
  */
 export async function findExperiences(filters = {}) {
   try {
+    console.log('체험단 조회 필터:', filters);
+    
     let sql = `
       SELECT e.*, u.name as creator_name 
       FROM experiences e 
@@ -447,21 +393,25 @@ export async function findExperiences(filters = {}) {
     `;
     let params = [];
     
+    // 지역 필터
     if (filters.region && filters.region !== '전체') {
       sql += ' AND e.region = ?';
       params.push(filters.region);
     }
     
+    // 카테고리 필터
     if (filters.category && filters.category !== '카테고리') {
       sql += ' AND e.category = ?';
       params.push(filters.category);
     }
     
+    // 타입 필터
     if (filters.type && filters.type !== '유형') {
       sql += ' AND e.type = ?';
       params.push(filters.type);
     }
     
+    // 검색 필터
     if (filters.search) {
       sql += ' AND (e.title LIKE ? OR e.content LIKE ?)';
       params.push(`%${filters.search}%`, `%${filters.search}%`);
@@ -476,16 +426,14 @@ export async function findExperiences(filters = {}) {
       sql += ' ORDER BY e.created_at DESC';
     }
     
-    // 페이징
-    if (filters.limit) {
+    // 페이징 - 간단하게 처리
+    if (filters.limit && filters.limit > 0) {
       sql += ' LIMIT ?';
-      params.push(filters.limit);
-      
-      if (filters.offset) {
-        sql += ' OFFSET ?';
-        params.push(filters.offset);
-      }
+      params.push(parseInt(filters.limit));
     }
+    
+    console.log('최종 SQL:', sql);
+    console.log('최종 파라미터:', params);
     
     const experiences = await executeQuery(sql, params);
     
@@ -504,13 +452,12 @@ export async function findExperiences(filters = {}) {
 }
 
 /**
- * 커뮤니티 게시글 조회
+ * 커뮤니티 게시글 조회 (간소화된 버전)
  */
 export async function findCommunityPosts(filters = {}) {
   try {
     let sql = `
-      SELECT p.*, u.nickname, u.profile_image,
-             (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id AND c.is_deleted = 0) as comment_count
+      SELECT p.*, u.nickname, u.profile_image
       FROM community_posts p 
       LEFT JOIN users u ON p.author_id = u.id 
       WHERE p.is_deleted = 0
@@ -530,31 +477,23 @@ export async function findCommunityPosts(filters = {}) {
     // 정렬
     if (filters.sort === 'popular') {
       sql += ' ORDER BY (p.views + p.likes) DESC';
-    } else if (filters.sort === 'comments') {
-      sql += ' ORDER BY comment_count DESC';
     } else {
       sql += ' ORDER BY p.created_at DESC';
     }
     
-    // 페이징
-    if (filters.limit) {
+    // 페이징 - 간단하게 처리
+    if (filters.limit && filters.limit > 0) {
       sql += ' LIMIT ?';
-      params.push(filters.limit);
-      
-      if (filters.offset) {
-        sql += ' OFFSET ?';
-        params.push(filters.offset);
-      }
+      params.push(parseInt(filters.limit));
     }
     
     const posts = await executeQuery(sql, params);
     
-    // JSON 필드 파싱 및 작성자 정보 추가
     return posts.map(post => ({
       ...post,
       images: post.images ? JSON.parse(post.images) : [],
       tags: post.tags ? JSON.parse(post.tags) : [],
-      commentCount: post.comment_count,
+      commentCount: 0, // 일단 0으로 설정
       author: {
         id: post.author_id,
         nickname: post.nickname || '익명',

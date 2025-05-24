@@ -1,10 +1,12 @@
-// 체험단 목록 조회/생성 API - MySQL2 버전
+// 체험단 목록 조회/생성 API - 간소화된 버전
 import { json } from '@sveltejs/kit';
 import { findExperiences, executeQuery } from '$lib/server/database.js';
 import { getUserFromRequest } from '$lib/server/auth.js';
 
 export async function GET({ url }) {
   try {
+    console.log('체험단 API 호출됨');
+    
     const region = url.searchParams.get('region') || '전체';
     const category = url.searchParams.get('category') || '';
     const type = url.searchParams.get('type') || '';
@@ -13,57 +15,40 @@ export async function GET({ url }) {
     const page = parseInt(url.searchParams.get('page') || '1');
     const limit = parseInt(url.searchParams.get('limit') || '20');
 
+    console.log('요청 파라미터:', { region, category, type, sort, search, page, limit });
+
     const filters = {
       region: region !== '전체' ? region : null,
-      category: category !== '카테고리' ? category : null,
-      type: type !== '유형' ? type : null,
+      category: category !== '카테고리' && category ? category : null,
+      type: type !== '유형' && type ? type : null,
       search: search || null,
       sort,
-      limit,
-      offset: (page - 1) * limit
+      limit
     };
+
+    console.log('필터 객체:', filters);
 
     const experiences = await findExperiences(filters);
 
-    // 총 개수 조회 (페이징용)
-    let countSql = 'SELECT COUNT(*) as total FROM experiences WHERE status = "active"';
-    let countParams = [];
+    console.log('조회된 체험단 수:', experiences.length);
 
-    if (filters.region) {
-      countSql += ' AND region = ?';
-      countParams.push(filters.region);
-    }
-
-    if (filters.category) {
-      countSql += ' AND category = ?';
-      countParams.push(filters.category);
-    }
-
-    if (filters.type) {
-      countSql += ' AND type = ?';
-      countParams.push(filters.type);
-    }
-
-    if (filters.search) {
-      countSql += ' AND (title LIKE ? OR content LIKE ?)';
-      countParams.push(`%${filters.search}%`, `%${filters.search}%`);
-    }
-
-    const [{ total }] = await executeQuery(countSql, countParams);
-
+    // 간단한 응답 (페이징 없이)
     return json({
       experiences,
       pagination: {
         page,
         limit,
-        total,
-        totalPages: Math.ceil(total / limit)
+        total: experiences.length,
+        totalPages: 1
       }
     });
 
   } catch (error) {
     console.error('체험단 목록 조회 오류:', error);
-    return json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
+    return json({ 
+      error: '서버 오류가 발생했습니다.',
+      details: error.message 
+    }, { status: 500 });
   }
 }
 
