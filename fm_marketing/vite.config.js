@@ -3,19 +3,23 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   plugins: [sveltekit()],
-  define: {
-    // 환경변수를 클라이언트에서 사용할 수 있도록 설정
-    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV)
-  },
   server: {
-    fs: {
-      allow: ['..']
-    }
+    port: 5173,
+    host: true
+  },
+  define: {
+    global: 'globalThis',
   },
   optimizeDeps: {
-    include: ['mysql2', 'typeorm', 'reflect-metadata']
+    exclude: ['typeorm']
   },
   ssr: {
-    noExternal: ['typeorm']
+    external: ['typeorm', 'mysql2', 'reflect-metadata'],
+    noExternal: []
+  },
+  build: {
+    rollupOptions: {
+      external: ['typeorm', 'mysql2', 'reflect-metadata']
+    }
   }
 });

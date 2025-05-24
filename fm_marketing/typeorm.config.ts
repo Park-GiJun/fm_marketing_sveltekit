@@ -19,11 +19,11 @@ config();
 
 export default new DataSource({
   type: 'mysql',
-  host: process.env.DB_HOST || 'localhost',
+  host: process.env.DB_HOST || '210.121.177.150',
   port: parseInt(process.env.DB_PORT || '3306'),
-  username: process.env.DB_USERNAME || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_DATABASE || 'fm_marketing',
+  username: process.env.DB_USERNAME || 'gijunpark',
+  password: process.env.DB_PASSWORD || 'park9832',
+  database: process.env.DB_DATABASE || 'FMMarketing',
   synchronize: process.env.NODE_ENV === 'development',
   logging: process.env.NODE_ENV === 'development',
   entities: [
@@ -41,7 +41,12 @@ export default new DataSource({
   ],
   migrations: ['src/lib/server/migrations/*.ts'],
   charset: 'utf8mb4',
+  timezone: '+09:00',
   extra: {
-    charset: 'utf8mb4_unicode_ci'
-  }
+    charset: 'utf8mb4_unicode_ci',
+    connectionLimit: 10,
+    acquireTimeout: 60000,
+    timeout: 60000
+  },
+  ssl: false
 });

@@ -1,13 +1,11 @@
 // SvelteKit 서버 훅
-import { initializeDatabase } from '$lib/server/database-init.js';
-import { getUserFromRequest } from '$lib/server/auth.js';
-
-// 앱 시작 시 데이터베이스 초기화
 let isInitialized = false;
 
 async function ensureDbInitialized() {
   if (!isInitialized) {
     try {
+      // 동적 import로 서버에서만 로드
+      const { initializeDatabase } = await import('$lib/server/database-init.js');
       await initializeDatabase();
       isInitialized = true;
     } catch (error) {
@@ -22,14 +20,20 @@ async function ensureDbInitialized() {
 
 /** @type {import('@sveltejs/kit').Handle} */
 export async function handle({ event, resolve }) {
-  // 데이터베이스 초기화 확인
-  await ensureDbInitialized();
+  // 데이터베이스 초기화 확인 (서버에서만)
+  if (typeof window === 'undefined') {
+    await ensureDbInitialized();
+  }
 
-  // API 요청에 대한 CORS 헤더 설정
+  // API 요청에 대한 사용자 인증 정보 추가
   if (event.url.pathname.startsWith('/api')) {
-    // 사용자 인증 정보 추가
-    const user = await getUserFromRequest(event.request);
-    event.locals.user = user;
+    try {
+      const { getUserFromRequest } = await import('$lib/server/auth.js');
+      const user = await getUserFromRequest(event.request);
+      event.locals.user = user;
+    } catch (error) {
+      console.error('사용자 인증 오류:', error);
+    }
   }
 
   const response = await resolve(event);

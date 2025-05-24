@@ -1,55 +1,44 @@
 // CommunityPost 엔티티
-// @ts-ignore
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
-import { User } from './User.js';
-import { Comment } from './Comment.js';
 
 @Entity('community_posts')
 export class CommunityPost {
   @PrimaryGeneratedColumn()
-  id: number;
+  id;
 
   @Column({ length: 200 })
-  title: string;
+  title;
 
   @Column({ type: 'text' })
-  content: string;
+  content;
 
   @Column({ length: 50 })
-  category: string;
+  category;
 
   @Column({ name: 'author_id' })
-  authorId: number;
+  authorId;
 
   @Column({ type: 'text', nullable: true })
-  images: string; // JSON.stringify된 배열
+  images; // JSON.stringify된 배열
 
   @Column({ type: 'text', nullable: true })
-  tags: string; // JSON.stringify된 배열
+  tags; // JSON.stringify된 배열
 
   @Column({ default: 0 })
-  views: number;
+  views;
 
   @Column({ default: 0 })
-  likes: number;
+  likes;
 
   @Column({ name: 'is_pinned', default: false })
-  isPinned: boolean;
+  isPinned;
 
   @Column({ name: 'is_deleted', default: false })
-  isDeleted: boolean;
+  isDeleted;
 
   @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
+  createdAt;
 
   @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
-
-  // Relations
-  @ManyToOne(() => User, (user: { posts: any; }) => user.posts)
-  @JoinColumn({ name: 'author_id' })
-  author: User;
-
-  @OneToMany(() => Comment, (comment: { post: any; }) => comment.post)
-  comments: Comment[];
+  updatedAt;
 }

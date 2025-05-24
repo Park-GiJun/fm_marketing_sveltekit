@@ -1,255 +1,236 @@
-// 데이터베이스 연결 및 초기 설정
-// @ts-ignore
-import Database from 'better-sqlite3';
-import { dev } from '$app/environment';
+// 간단한 MySQL 데이터베이스 연결
+import mysql from 'mysql2/promise';
+import { config } from 'dotenv';
 
-// SQLite 데이터베이스 초기화
-const db = new Database(dev ? 'dev.db' : 'production.db');
+// 환경변수 로드
+config();
 
-// WAL 모드 활성화 (성능 향상)
-db.pragma('journal_mode = WAL');
+// 데이터베이스 설정
+const dbConfig = {
+  host: process.env.DB_HOST || '210.121.177.150',
+  port: parseInt(process.env.DB_PORT || '3306'),
+  user: process.env.DB_USERNAME || 'gijunpark',
+  password: process.env.DB_PASSWORD || 'park9832',
+  database: process.env.DB_DATABASE || 'FMMarketing',
+  timezone: '+09:00',
+  ssl: false,
+  charset: 'utf8mb4'
+};
 
-// 테이블 생성
-function initializeTables() {
-	// 사용자 테이블
-	db.exec(`
-		CREATE TABLE IF NOT EXISTS users (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			username TEXT UNIQUE NOT NULL,
-			email TEXT UNIQUE NOT NULL,
-			password_hash TEXT NOT NULL,
-			name TEXT NOT NULL,
-			nickname TEXT,
-			profile_image TEXT,
-			phone TEXT,
-			birth_date DATE,
-			gender TEXT CHECK(gender IN ('male', 'female', 'other')),
-			address TEXT,
-			blog_url TEXT,
-			instagram_url TEXT,
-			youtube_url TEXT,
-			points INTEGER DEFAULT 0,
-			level TEXT DEFAULT 'bronze',
-			is_active BOOLEAN DEFAULT true,
-			is_verified BOOLEAN DEFAULT false,
-			role TEXT DEFAULT 'user' CHECK(role IN ('user', 'admin', 'moderator')),
-			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-		)
-	`);
+let pool = null;
 
-	// 체험단/리뷰 테이블
-	db.exec(`
-		CREATE TABLE IF NOT EXISTS experiences (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			title TEXT NOT NULL,
-			content TEXT NOT NULL,
-			category TEXT NOT NULL,
-			type TEXT NOT NULL CHECK(type IN ('체험단', '기자단')),
-			region TEXT NOT NULL,
-			location TEXT,
-			start_date DATE,
-			end_date DATE,
-			application_deadline DATE,
-			max_participants INTEGER,
-			current_participants INTEGER DEFAULT 0,
-			required_points INTEGER DEFAULT 0,
-			reward_points INTEGER DEFAULT 0,
-			reward_description TEXT,
-			requirements TEXT,
-			company_name TEXT,
-			contact_info TEXT,
-			images TEXT, -- JSON array of image URLs
-			tags TEXT, -- JSON array of tags
-			status TEXT DEFAULT 'active' CHECK(status IN ('draft', 'active', 'closed', 'completed')),
-			is_promoted BOOLEAN DEFAULT false,
-			views INTEGER DEFAULT 0,
-			likes INTEGER DEFAULT 0,
-			created_by INTEGER,
-			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			FOREIGN KEY (created_by) REFERENCES users(id)
-		)
-	`);
-
-	// 체험단 신청 테이블
-	db.exec(`
-		CREATE TABLE IF NOT EXISTS experience_applications (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			experience_id INTEGER NOT NULL,
-			user_id INTEGER NOT NULL,
-			application_text TEXT,
-			status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'approved', 'rejected', 'completed')),
-			admin_note TEXT,
-			applied_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			reviewed_at DATETIME,
-			completed_at DATETIME,
-			FOREIGN KEY (experience_id) REFERENCES experiences(id),
-			FOREIGN KEY (user_id) REFERENCES users(id),
-			UNIQUE(experience_id, user_id)
-		)
-	`);
-
-	// 커뮤니티 게시글 테이블
-	db.exec(`
-		CREATE TABLE IF NOT EXISTS community_posts (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			title TEXT NOT NULL,
-			content TEXT NOT NULL,
-			category TEXT NOT NULL,
-			author_id INTEGER NOT NULL,
-			images TEXT, -- JSON array
-			tags TEXT, -- JSON array
-			views INTEGER DEFAULT 0,
-			likes INTEGER DEFAULT 0,
-			is_pinned BOOLEAN DEFAULT false,
-			is_deleted BOOLEAN DEFAULT false,
-			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			FOREIGN KEY (author_id) REFERENCES users(id)
-		)
-	`);
-
-	// 댓글 테이블
-	db.exec(`
-		CREATE TABLE IF NOT EXISTS comments (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			post_id INTEGER NOT NULL,
-			parent_id INTEGER, -- 대댓글용
-			author_id INTEGER NOT NULL,
-			content TEXT NOT NULL,
-			is_deleted BOOLEAN DEFAULT false,
-			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			FOREIGN KEY (post_id) REFERENCES community_posts(id),
-			FOREIGN KEY (parent_id) REFERENCES comments(id),
-			FOREIGN KEY (author_id) REFERENCES users(id)
-		)
-	`);
-
-	// 이벤트/공지사항 테이블
-	db.exec(`
-		CREATE TABLE IF NOT EXISTS events (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			title TEXT NOT NULL,
-			content TEXT NOT NULL,
-			type TEXT NOT NULL CHECK(type IN ('event', 'notice')),
-			category TEXT,
-			image_url TEXT,
-			start_date DATE,
-			end_date DATE,
-			is_active BOOLEAN DEFAULT true,
-			is_important BOOLEAN DEFAULT false,
-			views INTEGER DEFAULT 0,
-			created_by INTEGER,
-			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			FOREIGN KEY (created_by) REFERENCES users(id)
-		)
-	`);
-
-	// 포인트 이력 테이블
-	db.exec(`
-		CREATE TABLE IF NOT EXISTS point_transactions (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			user_id INTEGER NOT NULL,
-			type TEXT NOT NULL CHECK(type IN ('earn', 'spend', 'withdraw')),
-			amount INTEGER NOT NULL,
-			description TEXT,
-			reference_type TEXT, -- 'experience', 'login', 'community', etc
-			reference_id INTEGER,
-			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			FOREIGN KEY (user_id) REFERENCES users(id)
-		)
-	`);
-
-	// 알림 테이블
-	db.exec(`
-		CREATE TABLE IF NOT EXISTS notifications (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			user_id INTEGER NOT NULL,
-			type TEXT NOT NULL,
-			title TEXT NOT NULL,
-			message TEXT NOT NULL,
-			is_read BOOLEAN DEFAULT false,
-			action_url TEXT,
-			priority TEXT DEFAULT 'medium' CHECK(priority IN ('low', 'medium', 'high')),
-			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			FOREIGN KEY (user_id) REFERENCES users(id)
-		)
-	`);
-
-	// 파일 업로드 테이블
-	db.exec(`
-		CREATE TABLE IF NOT EXISTS uploaded_files (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			filename TEXT NOT NULL,
-			original_name TEXT NOT NULL,
-			file_path TEXT NOT NULL,
-			file_size INTEGER,
-			mime_type TEXT,
-			uploaded_by INTEGER,
-			upload_type TEXT, -- 'profile', 'experience', 'community', etc
-			reference_id INTEGER,
-			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			FOREIGN KEY (uploaded_by) REFERENCES users(id)
-		)
-	`);
-
-	// 가이드/FAQ 테이블
-	db.exec(`
-		CREATE TABLE IF NOT EXISTS guides (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			title TEXT NOT NULL,
-			content TEXT NOT NULL,
-			category TEXT NOT NULL,
-			thumbnail TEXT,
-			views INTEGER DEFAULT 0,
-			order_index INTEGER DEFAULT 0,
-			is_active BOOLEAN DEFAULT true,
-			created_by INTEGER,
-			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			FOREIGN KEY (created_by) REFERENCES users(id)
-		)
-	`);
-
-	// FAQ 테이블
-	db.exec(`
-		CREATE TABLE IF NOT EXISTS faqs (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			question TEXT NOT NULL,
-			answer TEXT NOT NULL,
-			category TEXT NOT NULL,
-			order_index INTEGER DEFAULT 0,
-			is_active BOOLEAN DEFAULT true,
-			created_by INTEGER,
-			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			FOREIGN KEY (created_by) REFERENCES users(id)
-		)
-	`);
-
-	// 인덱스 생성
-	db.exec(`
-		CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-		CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
-		CREATE INDEX IF NOT EXISTS idx_experiences_region ON experiences(region);
-		CREATE INDEX IF NOT EXISTS idx_experiences_category ON experiences(category);
-		CREATE INDEX IF NOT EXISTS idx_experiences_status ON experiences(status);
-		CREATE INDEX IF NOT EXISTS idx_applications_user ON experience_applications(user_id);
-		CREATE INDEX IF NOT EXISTS idx_applications_experience ON experience_applications(experience_id);
-		CREATE INDEX IF NOT EXISTS idx_posts_author ON community_posts(author_id);
-		CREATE INDEX IF NOT EXISTS idx_posts_category ON community_posts(category);
-		CREATE INDEX IF NOT EXISTS idx_comments_post ON comments(post_id);
-		CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
-		CREATE INDEX IF NOT EXISTS idx_points_user ON point_transactions(user_id);
-	`);
-
-	console.log('데이터베이스 테이블 초기화 완료');
+// 연결 풀 생성
+export function createPool() {
+  if (!pool) {
+    pool = mysql.createPool({
+      ...dbConfig,
+      waitForConnections: true,
+      connectionLimit: 10,
+      queueLimit: 0
+    });
+  }
+  return pool;
 }
 
-// 초기화 실행
-initializeTables();
+// 데이터베이스 연결 가져오기
+export async function getConnection() {
+  const pool = createPool();
+  return await pool.getConnection();
+}
 
-export { db };
+// 쿼리 실행
+export async function executeQuery(sql, params = []) {
+  const connection = await getConnection();
+  try {
+    const [rows] = await connection.execute(sql, params);
+    return rows;
+  } finally {
+    connection.release();
+  }
+}
+
+// 트랜잭션 실행
+export async function executeTransaction(queries) {
+  const connection = await getConnection();
+  try {
+    await connection.beginTransaction();
+    
+    const results = [];
+    for (const { sql, params } of queries) {
+      const [result] = await connection.execute(sql, params);
+      results.push(result);
+    }
+    
+    await connection.commit();
+    return results;
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+// 데이터베이스 초기화
+export async function initializeDatabase() {
+  try {
+    console.log('데이터베이스 연결 테스트 중...');
+    const connection = await getConnection();
+    
+    // 연결 테스트
+    await connection.execute('SELECT 1');
+    console.log('✅ 데이터베이스 연결 성공');
+    
+    connection.release();
+    
+    // 테이블 생성
+    await createTables();
+    
+    // 시드 데이터 생성
+    await createSeedData();
+    
+    return true;
+  } catch (error) {
+    console.error('❌ 데이터베이스 초기화 실패:', error);
+    throw error;
+  }
+}
+
+// 테이블 생성
+async function createTables() {
+  console.log('테이블 생성 중...');
+  
+  const tables = [
+    `CREATE TABLE IF NOT EXISTS users (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      username VARCHAR(50) UNIQUE NOT NULL,
+      email VARCHAR(100) UNIQUE NOT NULL,
+      password_hash VARCHAR(255) NOT NULL,
+      name VARCHAR(50) NOT NULL,
+      nickname VARCHAR(50),
+      profile_image TEXT,
+      phone VARCHAR(20),
+      birth_date DATE,
+      gender ENUM('male', 'female', 'other'),
+      address TEXT,
+      blog_url VARCHAR(255),
+      instagram_url VARCHAR(255),
+      youtube_url VARCHAR(255),
+      points INT DEFAULT 0,
+      level ENUM('bronze', 'silver', 'gold', 'platinum') DEFAULT 'bronze',
+      is_active BOOLEAN DEFAULT TRUE,
+      is_verified BOOLEAN DEFAULT FALSE,
+      role ENUM('user', 'admin', 'moderator') DEFAULT 'user',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`,
+    
+    `CREATE TABLE IF NOT EXISTS experiences (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      title VARCHAR(200) NOT NULL,
+      content TEXT NOT NULL,
+      category VARCHAR(50) NOT NULL,
+      type ENUM('체험단', '기자단') NOT NULL,
+      region VARCHAR(50) NOT NULL,
+      location TEXT,
+      start_date DATE,
+      end_date DATE,
+      application_deadline DATE,
+      max_participants INT,
+      current_participants INT DEFAULT 0,
+      required_points INT DEFAULT 0,
+      reward_points INT DEFAULT 0,
+      reward_description TEXT,
+      requirements TEXT,
+      company_name VARCHAR(255),
+      contact_info VARCHAR(500),
+      images TEXT,
+      tags TEXT,
+      status ENUM('draft', 'active', 'closed', 'completed') DEFAULT 'active',
+      is_promoted BOOLEAN DEFAULT FALSE,
+      views INT DEFAULT 0,
+      likes INT DEFAULT 0,
+      created_by INT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      FOREIGN KEY (created_by) REFERENCES users(id)
+    ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`,
+    
+    `CREATE TABLE IF NOT EXISTS community_posts (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      title VARCHAR(200) NOT NULL,
+      content TEXT NOT NULL,
+      category VARCHAR(50) NOT NULL,
+      author_id INT NOT NULL,
+      images TEXT,
+      tags TEXT,
+      views INT DEFAULT 0,
+      likes INT DEFAULT 0,
+      is_pinned BOOLEAN DEFAULT FALSE,
+      is_deleted BOOLEAN DEFAULT FALSE,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      FOREIGN KEY (author_id) REFERENCES users(id)
+    ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`,
+    
+    `CREATE TABLE IF NOT EXISTS point_transactions (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      user_id INT NOT NULL,
+      type ENUM('earn', 'spend', 'withdraw') NOT NULL,
+      amount INT NOT NULL,
+      description TEXT,
+      reference_type VARCHAR(50),
+      reference_id INT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`
+  ];
+  
+  for (const table of tables) {
+    await executeQuery(table);
+  }
+  
+  console.log('✅ 테이블 생성 완료');
+}
+
+// 시드 데이터 생성
+async function createSeedData() {
+  try {
+    console.log('시드 데이터 확인 중...');
+    
+    // 기존 관리자 계정 확인
+    const existingAdmin = await executeQuery('SELECT id FROM users WHERE username = ?', ['admin']);
+    
+    if (existingAdmin.length > 0) {
+      console.log('시드 데이터가 이미 존재합니다.');
+      return;
+    }
+    
+    console.log('시드 데이터 생성 중...');
+    
+    // bcryptjs를 동적으로 import
+    const bcrypt = await import('bcryptjs');
+    
+    // 관리자 계정 생성
+    const adminPassword = await bcrypt.hash('admin123!', 12);
+    
+    await executeQuery(`
+      INSERT INTO users (username, email, password_hash, name, nickname, points, role, level, is_verified)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, ['admin', 'admin@fmmarketing.com', adminPassword, '관리자', '관리자', 50000, 'admin', 'platinum', 1]);
+    
+    // 테스트 사용자 생성
+    const userPassword = await bcrypt.hash('user123!', 12);
+    
+    await executeQuery(`
+      INSERT INTO users (username, email, password_hash, name, nickname, points, level, is_verified)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `, ['user1', 'user1@example.com', userPassword, '김철수', '철수', 5000, 'bronze', 1]);
+    
+    console.log('✅ 시드 데이터 생성 완료');
+    
+  } catch (error) {
+    console.error('시드 데이터 생성 오류:', error);
+    // 시드 데이터 생성 실패해도 앱은 계속 실행
+  }
+}

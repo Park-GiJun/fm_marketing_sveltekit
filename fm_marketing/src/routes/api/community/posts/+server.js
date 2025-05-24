@@ -4,6 +4,7 @@ import { getDataSource } from '$lib/server/data-source.js';
 import { CommunityPost } from '$lib/server/entities/CommunityPost.js';
 import { User } from '$lib/server/entities/User.js';
 import { getUserFromRequest } from '$lib/server/auth.js';
+import { processEntityJsonFields } from '$lib/server/utils/json-helper.js';
 
 export async function GET({ url }) {
 	try {
@@ -75,11 +76,14 @@ export async function GET({ url }) {
 			.limit(limit)
 			.getRawAndEntities();
 
-		const posts = rawResults.entities.map((post, index) => ({
-			...post,
-			commentCount: parseInt(rawResults.raw[index].commentCount) || 0,
-			authorName: post.author?.name || post.author?.nickname
-		}));
+		const posts = rawResults.entities.map((post, index) => {
+			const processed = processEntityJsonFields(post, ['images', 'tags']);
+			return {
+				...processed,
+				commentCount: parseInt(rawResults.raw[index].commentCount) || 0,
+				authorName: post.author?.name || post.author?.nickname
+			};
+		});
 
 		return json({
 			posts,
@@ -121,8 +125,8 @@ export async function POST({ request }) {
 			content,
 			category,
 			authorId: user.id,
-			tags: tags || [],
-			images: images || []
+			tags: JSON.stringify(tags || []),
+			images: JSON.stringify(images || [])
 		});
 
 		const savedPost = await postRepository.save(post);

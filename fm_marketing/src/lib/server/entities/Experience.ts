@@ -66,17 +66,17 @@ export class Experience {
   @Column({ type: 'text', nullable: true })
   requirements: string;
 
-  @Column({ name: 'company_name', nullable: true })
+  @Column({ name: 'company_name', nullable: true, length: 255 })
   companyName: string;
 
-  @Column({ name: 'contact_info', nullable: true })
+  @Column({ name: 'contact_info', nullable: true, length: 500 })
   contactInfo: string;
 
-  @Column({ type: 'json', nullable: true })
-  images: string[];
+  @Column({ type: 'text', nullable: true })
+  images: string; // JSON.stringify된 배열
 
-  @Column({ type: 'json', nullable: true })
-  tags: string[];
+  @Column({ type: 'text', nullable: true })
+  tags: string; // JSON.stringify된 배열
 
   @Column({ type: 'enum', enum: ExperienceStatus, default: ExperienceStatus.ACTIVE })
   status: ExperienceStatus;

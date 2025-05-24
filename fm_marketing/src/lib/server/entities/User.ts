@@ -63,13 +63,13 @@ export class User {
   @Column({ type: 'text', nullable: true })
   address: string;
 
-  @Column({ name: 'blog_url', nullable: true })
+  @Column({ name: 'blog_url', nullable: true, length: 255 })
   blogUrl: string;
 
-  @Column({ name: 'instagram_url', nullable: true })
+  @Column({ name: 'instagram_url', nullable: true, length: 255 })
   instagramUrl: string;
 
-  @Column({ name: 'youtube_url', nullable: true })
+  @Column({ name: 'youtube_url', nullable: true, length: 255 })
   youtubeUrl: string;
 
   @Column({ default: 0 })
