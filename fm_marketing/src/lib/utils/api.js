@@ -1,7 +1,7 @@
 // src/lib/utils/api.js
 
 // API 기본 설정
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 const API_TIMEOUT = 10000; // 10초
 
 /**
@@ -214,15 +214,15 @@ export const authApi = {
  * 리뷰/체험단 관련 API
  */
 export const reviewApi = {
-	getReviews: (params = {}) => apiClient.get('/reviews', params),
-	getReview: (id) => apiClient.get(`/reviews/${id}`),
-	createReview: (data) => apiClient.post('/reviews', data),
-	updateReview: (id, data) => apiClient.put(`/reviews/${id}`, data),
-	deleteReview: (id) => apiClient.delete(`/reviews/${id}`),
-	likeReview: (id) => apiClient.post(`/reviews/${id}/like`),
-	applyReview: (id, data) => apiClient.post(`/reviews/${id}/apply`, data),
-	getApplications: (params = {}) => apiClient.get('/reviews/applications', params),
-	updateApplication: (id, data) => apiClient.patch(`/reviews/applications/${id}`, data)
+	getReviews: (params = {}) => apiClient.get('/experiences', params),
+	getReview: (id) => apiClient.get(`/experiences/${id}`),
+	createReview: (data) => apiClient.post('/experiences', data),
+	updateReview: (id, data) => apiClient.put(`/experiences/${id}`, data),
+	deleteReview: (id) => apiClient.delete(`/experiences/${id}`),
+	likeReview: (id) => apiClient.post(`/experiences/${id}/like`),
+	applyReview: (id, data) => apiClient.post(`/experiences/${id}/apply`, data),
+	getApplications: (params = {}) => apiClient.get('/experiences/applications', params),
+	updateApplication: (id, data) => apiClient.patch(`/experiences/applications/${id}`, data)
 };
 
 /**

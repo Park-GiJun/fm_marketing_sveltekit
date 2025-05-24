@@ -52,9 +52,9 @@ export async function GET({ url }) {
 		// 정렬 (순서, 최신순)
 		sql += ' ORDER BY f.order_index ASC, f.created_at DESC';
 
-		// 페이징
+		// 페이징 - 숫자로 확실히 변환
 		sql += ' LIMIT ? OFFSET ?';
-		params.push(limit, offset);
+		params.push(parseInt(limit), parseInt(offset));
 
 		// 데이터 조회
 		const faqs = await executeQuery(sql, params);

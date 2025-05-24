@@ -628,10 +628,13 @@ export async function findExperiences(filters = {}) {
       sql += ' ORDER BY e.created_at DESC';
     }
     
-    // 페이징 - 간단하게 처리
-    if (filters.limit && filters.limit > 0) {
-      sql += ' LIMIT ?';
-      params.push(parseInt(filters.limit));
+    // 페이징 - 간단하게 처리, 숫자로 확실히 변환
+    if (filters.limit) {
+      const limitNum = parseInt(filters.limit);
+      if (!isNaN(limitNum) && limitNum > 0) {
+        sql += ' LIMIT ?';
+        params.push(limitNum);
+      }
     }
     
     console.log('최종 SQL:', sql);
@@ -683,10 +686,13 @@ export async function findCommunityPosts(filters = {}) {
       sql += ' ORDER BY p.created_at DESC';
     }
     
-    // 페이징 - 간단하게 처리
-    if (filters.limit && filters.limit > 0) {
-      sql += ' LIMIT ?';
-      params.push(parseInt(filters.limit));
+    // 페이징 - 간단하게 처리, 숫자로 확실히 변환
+    if (filters.limit) {
+      const limitNum = parseInt(filters.limit);
+      if (!isNaN(limitNum) && limitNum > 0) {
+        sql += ' LIMIT ?';
+        params.push(limitNum);
+      }
     }
     
     const posts = await executeQuery(sql, params);

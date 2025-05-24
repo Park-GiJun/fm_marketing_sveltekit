@@ -25,7 +25,7 @@ export async function GET({ url }) {
       search: search || null,
       sort,
       status: 'active', // active 체험단만
-      limit
+      limit: limit // 이미 parseInt로 변환됨
     };
 
     console.log('필터 객체:', filters);

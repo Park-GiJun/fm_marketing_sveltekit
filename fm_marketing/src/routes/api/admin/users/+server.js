@@ -86,9 +86,9 @@ export async function GET({ url, request }) {
     const [countResult] = await executeQuery(countQuery, countParams);
     const total = countResult?.total || 0;
 
-    // 사용자 목록 조회
+    // 사용자 목록 조회 - 숫자로 확실히 변환
     selectQuery += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
-    params.push(limit, offset);
+    params.push(parseInt(limit), parseInt(offset));
     
     const users = await executeQuery(selectQuery, params);
 
