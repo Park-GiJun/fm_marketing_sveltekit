@@ -1,8 +1,6 @@
-// FAQ 목록 조회/생성 API
+// FAQ 목록 조회/생성 API - MySQL2 버전
 import { json } from '@sveltejs/kit';
-import { getDataSource } from '$lib/server/data-source.js';
-import { FAQ } from '$lib/server/entities/FAQ.js';
-import { User, UserRole } from '$lib/server/entities/User.js';
+import { executeQuery } from '$lib/server/database.js';
 import { getUserFromRequest } from '$lib/server/auth.js';
 
 export async function GET({ url }) {
@@ -14,48 +12,62 @@ export async function GET({ url }) {
 		const limit = parseInt(url.searchParams.get('limit') || '50');
 		const offset = (page - 1) * limit;
 
-		const dataSource = await getDataSource();
-		const faqRepository = dataSource.getRepository(FAQ);
-
-		// 쿼리 빌더 생성
-		let queryBuilder = faqRepository
-			.createQueryBuilder('faq')
-			.leftJoinAndSelect('faq.creator', 'creator');
+		// 기본 쿼리
+		let sql = `
+			SELECT f.*, u.name as creator_name 
+			FROM faqs f 
+			LEFT JOIN users u ON f.created_by = u.id 
+			WHERE 1=1
+		`;
+		let countSql = 'SELECT COUNT(*) as total FROM faqs WHERE 1=1';
+		let params = [];
+		let countParams = [];
 
 		// 카테고리 필터
 		if (category) {
-			queryBuilder.andWhere('faq.category = :category', { category });
+			sql += ' AND f.category = ?';
+			countSql += ' AND category = ?';
+			params.push(category);
+			countParams.push(category);
 		}
 
 		// 검색어 필터
 		if (search) {
-			queryBuilder.andWhere(
-				'(faq.question LIKE :search OR faq.answer LIKE :search)',
-				{ search: `%${search}%` }
-			);
+			sql += ' AND (f.question LIKE ? OR f.answer LIKE ?)';
+			countSql += ' AND (question LIKE ? OR answer LIKE ?)';
+			params.push(`%${search}%`, `%${search}%`);
+			countParams.push(`%${search}%`, `%${search}%`);
 		}
 
 		// 활성 상태 필터
 		if (active !== 'false') {
-			queryBuilder.andWhere('faq.isActive = :isActive', { isActive: true });
+			sql += ' AND f.is_active = 1';
+			countSql += ' AND is_active = 1';
 		}
 
-		// 정렬 (순서, 최신순)
-		queryBuilder
-			.orderBy('faq.orderIndex', 'ASC')
-			.addOrderBy('faq.createdAt', 'DESC');
-
 		// 총 개수 조회
-		const total = await queryBuilder.getCount();
+		const [countResult] = await executeQuery(countSql, countParams);
+		const total = countResult?.total || 0;
+
+		// 정렬 (순서, 최신순)
+		sql += ' ORDER BY f.order_index ASC, f.created_at DESC';
+
+		// 페이징
+		sql += ' LIMIT ? OFFSET ?';
+		params.push(limit, offset);
 
 		// 데이터 조회
-		const faqs = await queryBuilder
-			.offset(offset)
-			.limit(limit)
-			.getMany();
+		const faqs = await executeQuery(sql, params);
 
 		return json({
-			faqs,
+			faqs: faqs.map(faq => ({
+				...faq,
+				creatorName: faq.creator_name,
+				createdAt: faq.created_at,
+				updatedAt: faq.updated_at,
+				orderIndex: faq.order_index,
+				isActive: !!faq.is_active
+			})),
 			pagination: {
 				page,
 				limit,
@@ -74,7 +86,7 @@ export async function POST({ request }) {
 	try {
 		const user = await getUserFromRequest(request);
 
-		if (!user || user.role !== UserRole.ADMIN) {
+		if (!user || user.role !== 'admin') {
 			return json({ error: '관리자 권한이 필요합니다.' }, { status: 403 });
 		}
 
@@ -85,26 +97,37 @@ export async function POST({ request }) {
 			return json({ error: '필수 정보를 모두 입력해주세요.' }, { status: 400 });
 		}
 
-		const dataSource = await getDataSource();
-		const faqRepository = dataSource.getRepository(FAQ);
+		const sql = `
+			INSERT INTO faqs (question, answer, category, order_index, created_by)
+			VALUES (?, ?, ?, ?, ?)
+		`;
 
-		const faq = faqRepository.create({
+		const params = [
 			question,
 			answer,
 			category,
-			orderIndex: orderIndex || 0,
-			createdById: user.id
-		});
+			orderIndex || 0,
+			user.id
+		];
 
-		const savedFaq = await faqRepository.save(faq);
+		const result = await executeQuery(sql, params);
 
-		// 작성자 정보와 함께 반환
-		const faqWithCreator = await faqRepository.findOne({
-			where: { id: savedFaq.id },
-			relations: ['creator']
-		});
+		// 생성된 FAQ 조회
+		const [newFaq] = await executeQuery(`
+			SELECT f.*, u.name as creator_name 
+			FROM faqs f 
+			LEFT JOIN users u ON f.created_by = u.id 
+			WHERE f.id = ?
+		`, [result.insertId]);
 
-		return json(faqWithCreator, { status: 201 });
+		return json({
+			...newFaq,
+			creatorName: newFaq.creator_name,
+			createdAt: newFaq.created_at,
+			updatedAt: newFaq.updated_at,
+			orderIndex: newFaq.order_index,
+			isActive: !!newFaq.is_active
+		}, { status: 201 });
 
 	} catch (error) {
 		console.error('FAQ 생성 오류:', error);

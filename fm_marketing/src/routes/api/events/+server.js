@@ -1,8 +1,6 @@
-// 이벤트 목록 조회/생성 API
+// 이벤트 목록 조회/생성 API - MySQL2 버전
 import { json } from '@sveltejs/kit';
-import { getDataSource } from '$lib/server/data-source.js';
-import { Event, EventType } from '$lib/server/entities/Event.js';
-import { User, UserRole } from '$lib/server/entities/User.js';
+import { executeQuery } from '$lib/server/database.js';
 import { getUserFromRequest } from '$lib/server/auth.js';
 
 export async function GET({ url }) {
@@ -14,52 +12,71 @@ export async function GET({ url }) {
 		const limit = parseInt(url.searchParams.get('limit') || '20');
 		const offset = (page - 1) * limit;
 
-		const dataSource = await getDataSource();
-		const eventRepository = dataSource.getRepository(Event);
-
-		// 쿼리 빌더 생성
-		let queryBuilder = eventRepository
-			.createQueryBuilder('event')
-			.leftJoinAndSelect('event.creator', 'creator');
+		// 기본 쿼리
+		let sql = `
+			SELECT e.*, u.name as creator_name 
+			FROM events e 
+			LEFT JOIN users u ON e.created_by = u.id 
+			WHERE 1=1
+		`;
+		let countSql = 'SELECT COUNT(*) as total FROM events WHERE 1=1';
+		let params = [];
+		let countParams = [];
 
 		// 타입 필터 (이벤트 또는 공지사항)
-		if (type && Object.values(EventType).includes(type)) {
-			queryBuilder.andWhere('event.type = :type', { type });
+		if (type && (type === 'event' || type === 'notice')) {
+			sql += ' AND e.type = ?';
+			countSql += ' AND type = ?';
+			params.push(type);
+			countParams.push(type);
 		}
 
 		// 카테고리 필터
 		if (category) {
-			queryBuilder.andWhere('event.category = :category', { category });
+			sql += ' AND e.category = ?';
+			countSql += ' AND category = ?';
+			params.push(category);
+			countParams.push(category);
 		}
 
 		// 활성 상태 필터
 		if (active === 'true') {
-			queryBuilder.andWhere('event.isActive = :isActive', { isActive: true });
+			sql += ' AND e.is_active = 1';
+			countSql += ' AND is_active = 1';
 			// 현재 진행 중인 이벤트만 (종료일이 없거나 현재보다 미래)
-			queryBuilder.andWhere(
-				'(event.endDate IS NULL OR event.endDate >= :now)',
-				{ now: new Date().toISOString().split('T')[0] }
-			);
+			sql += ' AND (e.end_date IS NULL OR e.end_date >= CURDATE())';
+			countSql += ' AND (end_date IS NULL OR end_date >= CURDATE())';
 		} else if (active === 'false') {
-			queryBuilder.andWhere('event.isActive = :isActive', { isActive: false });
+			sql += ' AND e.is_active = 0';
+			countSql += ' AND is_active = 0';
 		}
 
-		// 정렬 (중요도 우선, 최신순)
-		queryBuilder
-			.orderBy('event.isImportant', 'DESC')
-			.addOrderBy('event.createdAt', 'DESC');
-
 		// 총 개수 조회
-		const total = await queryBuilder.getCount();
+		const [countResult] = await executeQuery(countSql, countParams);
+		const total = countResult?.total || 0;
+
+		// 정렬 (중요도 우선, 최신순)
+		sql += ' ORDER BY e.is_important DESC, e.created_at DESC';
+
+		// 페이징
+		sql += ' LIMIT ? OFFSET ?';
+		params.push(limit, offset);
 
 		// 데이터 조회
-		const events = await queryBuilder
-			.offset(offset)
-			.limit(limit)
-			.getMany();
+		const events = await executeQuery(sql, params);
 
 		return json({
-			events,
+			events: events.map(event => ({
+				...event,
+				creatorName: event.creator_name,
+				createdAt: event.created_at,
+				updatedAt: event.updated_at,
+				startDate: event.start_date,
+				endDate: event.end_date,
+				imageUrl: event.image_url,
+				isActive: !!event.is_active,
+				isImportant: !!event.is_important
+			})),
 			pagination: {
 				page,
 				limit,
@@ -78,7 +95,7 @@ export async function POST({ request }) {
 	try {
 		const user = await getUserFromRequest(request);
 
-		if (!user || user.role !== UserRole.ADMIN) {
+		if (!user || user.role !== 'admin') {
 			return json({ error: '관리자 권한이 필요합니다.' }, { status: 403 });
 		}
 
@@ -92,34 +109,50 @@ export async function POST({ request }) {
 			return json({ error: '필수 정보를 모두 입력해주세요.' }, { status: 400 });
 		}
 
-		if (!Object.values(EventType).includes(type)) {
+		if (type !== 'event' && type !== 'notice') {
 			return json({ error: '올바른 타입을 선택해주세요.' }, { status: 400 });
 		}
 
-		const dataSource = await getDataSource();
-		const eventRepository = dataSource.getRepository(Event);
+		const sql = `
+			INSERT INTO events (
+				title, content, type, category, image_url,
+				start_date, end_date, is_important, created_by
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`;
 
-		const event = eventRepository.create({
+		const params = [
 			title,
 			content,
 			type,
-			category,
-			imageUrl,
-			startDate: startDate ? new Date(startDate) : null,
-			endDate: endDate ? new Date(endDate) : null,
-			isImportant: !!isImportant,
-			createdById: user.id
-		});
+			category || null,
+			imageUrl || null,
+			startDate || null,
+			endDate || null,
+			isImportant ? 1 : 0,
+			user.id
+		];
 
-		const savedEvent = await eventRepository.save(event);
+		const result = await executeQuery(sql, params);
 
-		// 작성자 정보와 함께 반환
-		const eventWithCreator = await eventRepository.findOne({
-			where: { id: savedEvent.id },
-			relations: ['creator']
-		});
+		// 생성된 이벤트 조회
+		const [newEvent] = await executeQuery(`
+			SELECT e.*, u.name as creator_name 
+			FROM events e 
+			LEFT JOIN users u ON e.created_by = u.id 
+			WHERE e.id = ?
+		`, [result.insertId]);
 
-		return json(eventWithCreator, { status: 201 });
+		return json({
+			...newEvent,
+			creatorName: newEvent.creator_name,
+			createdAt: newEvent.created_at,
+			updatedAt: newEvent.updated_at,
+			startDate: newEvent.start_date,
+			endDate: newEvent.end_date,
+			imageUrl: newEvent.image_url,
+			isActive: !!newEvent.is_active,
+			isImportant: !!newEvent.is_important
+		}, { status: 201 });
 
 	} catch (error) {
 		console.error('이벤트 생성 오류:', error);

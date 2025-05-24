@@ -591,7 +591,8 @@ export async function findExperiences(filters = {}) {
       params.push(filters.status);
     } else {
       // 기본적으로 active 상태만 조회
-      sql += ' AND e.status = "active"';
+      sql += ' AND e.status = ?';
+      params.push('active');
     }
     
     // 지역 필터

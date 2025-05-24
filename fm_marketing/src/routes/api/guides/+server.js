@@ -1,8 +1,6 @@
-// 가이드 목록 조회/생성 API
+// 가이드 목록 조회/생성 API - MySQL2 버전
 import { json } from '@sveltejs/kit';
-import { getDataSource } from '$lib/server/data-source.js';
-import { Guide } from '$lib/server/entities/Guide.js';
-import { User, UserRole } from '$lib/server/entities/User.js';
+import { executeQuery } from '$lib/server/database.js';
 import { getUserFromRequest } from '$lib/server/auth.js';
 
 export async function GET({ url }) {
@@ -13,40 +11,54 @@ export async function GET({ url }) {
 		const limit = parseInt(url.searchParams.get('limit') || '20');
 		const offset = (page - 1) * limit;
 
-		const dataSource = await getDataSource();
-		const guideRepository = dataSource.getRepository(Guide);
-
-		// 쿼리 빌더 생성
-		let queryBuilder = guideRepository
-			.createQueryBuilder('guide')
-			.leftJoinAndSelect('guide.creator', 'creator');
+		// 기본 쿼리
+		let sql = `
+			SELECT g.*, u.name as creator_name 
+			FROM guides g 
+			LEFT JOIN users u ON g.created_by = u.id 
+			WHERE 1=1
+		`;
+		let countSql = 'SELECT COUNT(*) as total FROM guides WHERE 1=1';
+		let params = [];
+		let countParams = [];
 
 		// 카테고리 필터
 		if (category) {
-			queryBuilder.andWhere('guide.category = :category', { category });
+			sql += ' AND g.category = ?';
+			countSql += ' AND category = ?';
+			params.push(category);
+			countParams.push(category);
 		}
 
 		// 활성 상태 필터
 		if (active !== 'false') {
-			queryBuilder.andWhere('guide.isActive = :isActive', { isActive: true });
+			sql += ' AND g.is_active = 1';
+			countSql += ' AND is_active = 1';
 		}
 
-		// 정렬 (순서, 최신순)
-		queryBuilder
-			.orderBy('guide.orderIndex', 'ASC')
-			.addOrderBy('guide.createdAt', 'DESC');
-
 		// 총 개수 조회
-		const total = await queryBuilder.getCount();
+		const [countResult] = await executeQuery(countSql, countParams);
+		const total = countResult?.total || 0;
+
+		// 정렬 (순서, 최신순)
+		sql += ' ORDER BY g.order_index ASC, g.created_at DESC';
+
+		// 페이징
+		sql += ' LIMIT ? OFFSET ?';
+		params.push(limit, offset);
 
 		// 데이터 조회
-		const guides = await queryBuilder
-			.offset(offset)
-			.limit(limit)
-			.getMany();
+		const guides = await executeQuery(sql, params);
 
 		return json({
-			guides,
+			guides: guides.map(guide => ({
+				...guide,
+				creatorName: guide.creator_name,
+				createdAt: guide.created_at,
+				updatedAt: guide.updated_at,
+				orderIndex: guide.order_index,
+				isActive: !!guide.is_active
+			})),
 			pagination: {
 				page,
 				limit,
@@ -65,7 +77,7 @@ export async function POST({ request }) {
 	try {
 		const user = await getUserFromRequest(request);
 
-		if (!user || user.role !== UserRole.ADMIN) {
+		if (!user || user.role !== 'admin') {
 			return json({ error: '관리자 권한이 필요합니다.' }, { status: 403 });
 		}
 
@@ -76,27 +88,38 @@ export async function POST({ request }) {
 			return json({ error: '필수 정보를 모두 입력해주세요.' }, { status: 400 });
 		}
 
-		const dataSource = await getDataSource();
-		const guideRepository = dataSource.getRepository(Guide);
+		const sql = `
+			INSERT INTO guides (title, content, category, thumbnail, order_index, created_by)
+			VALUES (?, ?, ?, ?, ?, ?)
+		`;
 
-		const guide = guideRepository.create({
+		const params = [
 			title,
 			content,
 			category,
-			thumbnail,
-			orderIndex: orderIndex || 0,
-			createdById: user.id
-		});
+			thumbnail || null,
+			orderIndex || 0,
+			user.id
+		];
 
-		const savedGuide = await guideRepository.save(guide);
+		const result = await executeQuery(sql, params);
 
-		// 작성자 정보와 함께 반환
-		const guideWithCreator = await guideRepository.findOne({
-			where: { id: savedGuide.id },
-			relations: ['creator']
-		});
+		// 생성된 가이드 조회
+		const [newGuide] = await executeQuery(`
+			SELECT g.*, u.name as creator_name 
+			FROM guides g 
+			LEFT JOIN users u ON g.created_by = u.id 
+			WHERE g.id = ?
+		`, [result.insertId]);
 
-		return json(guideWithCreator, { status: 201 });
+		return json({
+			...newGuide,
+			creatorName: newGuide.creator_name,
+			createdAt: newGuide.created_at,
+			updatedAt: newGuide.updated_at,
+			orderIndex: newGuide.order_index,
+			isActive: !!newGuide.is_active
+		}, { status: 201 });
 
 	} catch (error) {
 		console.error('가이드 생성 오류:', error);
