@@ -17,12 +17,14 @@ export async function GET({ url }) {
 
     console.log('요청 파라미터:', { region, category, type, sort, search, page, limit });
 
+    // 상태 필터 추가 - active인 체험단만 조회
     const filters = {
       region: region !== '전체' ? region : null,
       category: category !== '카테고리' && category ? category : null,
       type: type !== '유형' && type ? type : null,
       search: search || null,
       sort,
+      status: 'active', // active 체험단만
       limit
     };
 
