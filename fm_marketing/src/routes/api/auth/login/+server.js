@@ -38,22 +38,16 @@ export async function POST({ request }) {
 
 		// 로그인 포인트 지급 (일일 첫 로그인)
 		const today = new Date().toISOString().split('T')[0];
-		const todayLogin = await pointRepository.findOne({
-			where: {
-				userId: user.id,
-				type: TransactionType.EARN,
-				referenceType: 'daily_login'
-			},
-			order: {
-				createdAt: 'DESC'
-			}
-		});
+		const todayLogin = await pointRepository
+			.createQueryBuilder('point')
+			.where('point.userId = :userId', { userId: user.id })
+			.andWhere('point.type = :type', { type: TransactionType.EARN })
+			.andWhere('point.referenceType = :referenceType', { referenceType: 'daily_login' })
+			.andWhere('DATE(point.createdAt) = :today', { today })
+			.getOne();
 
 		// 오늘 로그인 포인트가 없으면 지급
-		const todayLoginExists = todayLogin && 
-			todayLogin.createdAt.toISOString().split('T')[0] === today;
-
-		if (!todayLoginExists) {
+		if (!todayLogin) {
 			await dataSource.transaction(async manager => {
 				// 일일 로그인 포인트 지급
 				const pointTransaction = manager.create(PointTransaction, {

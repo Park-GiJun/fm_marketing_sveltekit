@@ -1,4 +1,5 @@
 // ExperienceApplication 엔티티
+// @ts-ignore
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, Unique } from 'typeorm';
 import { User } from './User.js';
 import { Experience } from './Experience.js';
@@ -41,11 +42,11 @@ export class ExperienceApplication {
   completedAt: Date;
 
   // Relations
-  @ManyToOne(() => Experience, experience => experience.applications)
+  @ManyToOne(() => Experience, (experience: { applications: any; }) => experience.applications)
   @JoinColumn({ name: 'experience_id' })
   experience: Experience;
 
-  @ManyToOne(() => User, user => user.applications)
+  @ManyToOne(() => User, (user: { applications: any; }) => user.applications)
   @JoinColumn({ name: 'user_id' })
   user: User;
 }

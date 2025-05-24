@@ -1,32 +1,49 @@
 // 체험단 신청 API
 import { json } from '@sveltejs/kit';
-import { db } from '$lib/server/database.js';
-import { requireAuth } from '$lib/server/auth.js';
+import { getDataSource } from '$lib/server/data-source.js';
+import { Experience, ExperienceStatus } from '$lib/server/entities/Experience.js';
+import { ExperienceApplication, ApplicationStatus } from '$lib/server/entities/ExperienceApplication.js';
+import { User } from '$lib/server/entities/User.js';
+import { PointTransaction, TransactionType } from '$lib/server/entities/PointTransaction.js';
+import { Notification, NotificationPriority } from '$lib/server/entities/Notification.js';
+import { getUserFromRequest } from '$lib/server/auth.js';
 
-export const POST = requireAuth(async ({ params, request, locals }) => {
+export async function POST({ params, request }) {
 	try {
 		const { id: experienceId } = params;
-		const user = locals.user;
+		const user = await getUserFromRequest(request);
+
+		if (!user) {
+			return json({ error: '인증이 필요합니다.' }, { status: 401 });
+		}
+
 		const { applicationText } = await request.json();
 
+		const dataSource = await getDataSource();
+		const experienceRepository = dataSource.getRepository(Experience);
+		const applicationRepository = dataSource.getRepository(ExperienceApplication);
+		const userRepository = dataSource.getRepository(User);
+
 		// 체험단 정보 확인
-		const experienceStmt = db.prepare(`
-			SELECT id, title, status, application_deadline, max_participants, current_participants, required_points
-			FROM experiences WHERE id = ?
-		`);
-		const experience = experienceStmt.get(experienceId);
+		const experience = await experienceRepository.findOne({
+			where: { id: parseInt(experienceId) },
+			select: [
+				'id', 'title', 'status', 'applicationDeadline', 
+				'maxParticipants', 'currentParticipants', 'requiredPoints'
+			]
+		});
 
 		if (!experience) {
 			return json({ error: '체험단을 찾을 수 없습니다.' }, { status: 404 });
 		}
 
-		if (experience.status !== 'active') {
+		if (experience.status !== ExperienceStatus.ACTIVE) {
 			return json({ error: '모집이 마감된 체험단입니다.' }, { status: 400 });
 		}
 
 		// 신청 마감일 확인
-		if (experience.application_deadline) {
-			const deadline = new Date(experience.application_deadline);
+		if (experience.applicationDeadline) {
+			const deadline = new Date(experience.applicationDeadline);
 			const now = new Date();
 			if (now > deadline) {
 				return json({ error: '신청 기간이 마감되었습니다.' }, { status: 400 });
@@ -34,120 +51,148 @@ export const POST = requireAuth(async ({ params, request, locals }) => {
 		}
 
 		// 모집 인원 확인
-		if (experience.max_participants && experience.current_participants >= experience.max_participants) {
+		if (experience.maxParticipants && 
+			experience.currentParticipants >= experience.maxParticipants) {
 			return json({ error: '모집 인원이 마감되었습니다.' }, { status: 400 });
 		}
 
 		// 필요 포인트 확인
-		if (experience.required_points > user.points) {
+		if (experience.requiredPoints > user.points) {
 			return json({ error: '포인트가 부족합니다.' }, { status: 400 });
 		}
 
 		// 중복 신청 확인
-		const existingStmt = db.prepare(`
-			SELECT id FROM experience_applications WHERE experience_id = ? AND user_id = ?
-		`);
-		const existing = existingStmt.get(experienceId, user.id);
+		const existingApplication = await applicationRepository.findOne({
+			where: {
+				experienceId: parseInt(experienceId),
+				userId: user.id
+			}
+		});
 
-		if (existing) {
+		if (existingApplication) {
 			return json({ error: '이미 신청한 체험단입니다.' }, { status: 409 });
 		}
 
-		// 트랜잭션 시작
-		const transaction = db.transaction(() => {
+		// 트랜잭션으로 신청 처리
+		const result = await dataSource.transaction(async manager => {
 			// 신청 데이터 저장
-			const applicationStmt = db.prepare(`
-				INSERT INTO experience_applications (experience_id, user_id, application_text)
-				VALUES (?, ?, ?)
-			`);
-			const applicationResult = applicationStmt.run(experienceId, user.id, applicationText || '');
+			const application = manager.create(ExperienceApplication, {
+				experienceId: parseInt(experienceId),
+				userId: user.id,
+				applicationText: applicationText || '',
+				status: ApplicationStatus.PENDING
+			});
+			const savedApplication = await manager.save(application);
 
 			// 필요 포인트 차감
-			if (experience.required_points > 0) {
-				const pointStmt = db.prepare(`
-					INSERT INTO point_transactions (user_id, type, amount, description, reference_type, reference_id)
-					VALUES (?, 'spend', ?, '체험단 신청', 'experience_application', ?)
-				`);
-				pointStmt.run(user.id, -experience.required_points, applicationResult.lastInsertRowid);
+			if (experience.requiredPoints > 0) {
+				const pointTransaction = manager.create(PointTransaction, {
+					userId: user.id,
+					type: TransactionType.SPEND,
+					amount: experience.requiredPoints,
+					description: '체험단 신청',
+					referenceType: 'experience_application',
+					referenceId: savedApplication.id
+				});
+				await manager.save(pointTransaction);
 
 				// 사용자 포인트 업데이트
-				const updateUserPointsStmt = db.prepare('UPDATE users SET points = points - ? WHERE id = ?');
-				updateUserPointsStmt.run(experience.required_points, user.id);
+				await manager.update(User, { id: user.id }, { 
+					points: () => `points - ${experience.requiredPoints}` 
+				});
 			}
 
 			// 체험단 신청자 수 증가
-			const updateCountStmt = db.prepare('UPDATE experiences SET current_participants = current_participants + 1 WHERE id = ?');
-			updateCountStmt.run(experienceId);
+			await manager.update(Experience, { id: parseInt(experienceId) }, {
+				currentParticipants: () => 'currentParticipants + 1'
+			});
 
 			// 신청 확인 알림 생성
-			const notificationStmt = db.prepare(`
-				INSERT INTO notifications (user_id, type, title, message, action_url, priority)
-				VALUES (?, 'application_received', '체험단 신청 완료', ?, ?, 'medium')
-			`);
-			notificationStmt.run(
-				user.id,
-				`${experience.title} 체험단 신청이 완료되었습니다. 선정 결과를 기다려주세요.`,
-				`/checklist/${experienceId}`
-			);
-		});
+			const notification = manager.create(Notification, {
+				userId: user.id,
+				type: 'application_received',
+				title: '체험단 신청 완료',
+				message: `${experience.title} 체험단 신청이 완료되었습니다. 선정 결과를 기다려주세요.`,
+				actionUrl: `/checklist/${experienceId}`,
+				priority: NotificationPriority.MEDIUM
+			});
+			await manager.save(notification);
 
-		transaction();
+			return savedApplication;
+		});
 
 		return json({ 
 			message: '체험단 신청이 완료되었습니다.',
-			applicationId: db.prepare('SELECT last_insert_rowid()').get()['last_insert_rowid()']
+			applicationId: result.id
 		}, { status: 201 });
 
 	} catch (error) {
 		console.error('체험단 신청 오류:', error);
 		return json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
 	}
-});
+}
 
-export const DELETE = requireAuth(async ({ params, locals }) => {
+export async function DELETE({ params, request }) {
 	try {
 		const { id: experienceId } = params;
-		const user = locals.user;
+		const user = await getUserFromRequest(request);
+
+		if (!user) {
+			return json({ error: '인증이 필요합니다.' }, { status: 401 });
+		}
+
+		const dataSource = await getDataSource();
+		const experienceRepository = dataSource.getRepository(Experience);
+		const applicationRepository = dataSource.getRepository(ExperienceApplication);
+		const userRepository = dataSource.getRepository(User);
 
 		// 기존 신청 확인
-		const applicationStmt = db.prepare(`
-			SELECT id FROM experience_applications WHERE experience_id = ? AND user_id = ? AND status = 'pending'
-		`);
-		const application = applicationStmt.get(experienceId, user.id);
+		const application = await applicationRepository.findOne({
+			where: {
+				experienceId: parseInt(experienceId),
+				userId: user.id,
+				status: ApplicationStatus.PENDING
+			}
+		});
 
 		if (!application) {
 			return json({ error: '취소할 수 있는 신청이 없습니다.' }, { status: 404 });
 		}
 
 		// 체험단 정보 조회
-		const experienceStmt = db.prepare('SELECT required_points FROM experiences WHERE id = ?');
-		const experience = experienceStmt.get(experienceId);
+		const experience = await experienceRepository.findOne({
+			where: { id: parseInt(experienceId) },
+			select: ['requiredPoints']
+		});
 
 		// 트랜잭션으로 신청 취소 처리
-		const transaction = db.transaction(() => {
+		await dataSource.transaction(async manager => {
 			// 신청 삭제
-			const deleteStmt = db.prepare('DELETE FROM experience_applications WHERE id = ?');
-			deleteStmt.run(application.id);
+			await manager.delete(ExperienceApplication, { id: application.id });
 
 			// 포인트 환불
-			if (experience.required_points > 0) {
-				const pointStmt = db.prepare(`
-					INSERT INTO point_transactions (user_id, type, amount, description, reference_type, reference_id)
-					VALUES (?, 'earn', ?, '체험단 신청 취소 환불', 'application_cancel', ?)
-				`);
-				pointStmt.run(user.id, experience.required_points, application.id);
+			if (experience.requiredPoints > 0) {
+				const pointTransaction = manager.create(PointTransaction, {
+					userId: user.id,
+					type: TransactionType.EARN,
+					amount: experience.requiredPoints,
+					description: '체험단 신청 취소 환불',
+					referenceType: 'application_cancel',
+					referenceId: application.id
+				});
+				await manager.save(pointTransaction);
 
 				// 사용자 포인트 업데이트
-				const updateUserPointsStmt = db.prepare('UPDATE users SET points = points + ? WHERE id = ?');
-				updateUserPointsStmt.run(experience.required_points, user.id);
+				await manager.update(User, { id: user.id }, { 
+					points: () => `points + ${experience.requiredPoints}` 
+				});
 			}
 
 			// 체험단 신청자 수 감소
-			const updateCountStmt = db.prepare('UPDATE experiences SET current_participants = current_participants - 1 WHERE id = ?');
-			updateCountStmt.run(experienceId);
+			await manager.update(Experience, { id: parseInt(experienceId) }, {
+				currentParticipants: () => 'currentParticipants - 1'
+			});
 		});
-
-		transaction();
 
 		return json({ message: '체험단 신청이 취소되었습니다.' });
 
@@ -155,4 +200,4 @@ export const DELETE = requireAuth(async ({ params, locals }) => {
 		console.error('체험단 신청 취소 오류:', error);
 		return json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
 	}
-});
+}

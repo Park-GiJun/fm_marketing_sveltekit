@@ -1,6 +1,9 @@
 // 체험단 상세 조회/수정/삭제 API
 import { json } from '@sveltejs/kit';
-import { db } from '$lib/server/database.js';
+import { getDataSource } from '$lib/server/data-source.js';
+import { Experience, ExperienceStatus } from '$lib/server/entities/Experience.js';
+import { ExperienceApplication } from '$lib/server/entities/ExperienceApplication.js';
+import { User, UserRole } from '$lib/server/entities/User.js';
 import { getUserFromRequest } from '$lib/server/auth.js';
 
 export async function GET({ params, request }) {
@@ -8,46 +11,54 @@ export async function GET({ params, request }) {
 		const { id } = params;
 		const user = await getUserFromRequest(request);
 
-		// 조회수 증가
-		const updateViewsStmt = db.prepare('UPDATE experiences SET views = views + 1 WHERE id = ?');
-		updateViewsStmt.run(id);
+		const dataSource = await getDataSource();
+		const experienceRepository = dataSource.getRepository(Experience);
+		const applicationRepository = dataSource.getRepository(ExperienceApplication);
 
 		// 체험단 정보 조회
-		const stmt = db.prepare(`
-			SELECT 
-				e.*,
-				u.name as creator_name,
-				(SELECT COUNT(*) FROM experience_applications WHERE experience_id = e.id) as application_count
-			FROM experiences e
-			LEFT JOIN users u ON e.created_by = u.id
-			WHERE e.id = ?
-		`);
+		const experience = await experienceRepository
+			.createQueryBuilder('experience')
+			.leftJoinAndSelect('experience.creator', 'creator')
+			.leftJoin('experience.applications', 'applications')
+			.addSelect('COUNT(applications.id)', 'applicationCount')
+			.where('experience.id = :id', { id })
+			.groupBy('experience.id')
+			.addGroupBy('creator.id')
+			.getRawAndEntities();
 
-		const experience = stmt.get(id);
-
-		if (!experience) {
+		if (!experience.entities[0]) {
 			return json({ error: '체험단을 찾을 수 없습니다.' }, { status: 404 });
 		}
+
+		const experienceData = experience.entities[0];
+		const applicationCount = parseInt(experience.raw[0].applicationCount) || 0;
+
+		// 조회수 증가
+		await experienceRepository.update(id, { 
+			views: () => 'views + 1' 
+		});
+		experienceData.views += 1;
 
 		// 사용자의 신청 상태 확인 (로그인된 경우)
 		let userApplication = null;
 		if (user) {
-			const appStmt = db.prepare(`
-				SELECT status, applied_at FROM experience_applications 
-				WHERE experience_id = ? AND user_id = ?
-			`);
-			userApplication = appStmt.get(id, user.id);
+			userApplication = await applicationRepository.findOne({
+				where: {
+					experienceId: parseInt(id),
+					userId: user.id
+				},
+				select: ['status', 'appliedAt']
+			});
 		}
 
-		// JSON 필드 파싱
-		const parsedExperience = {
-			...experience,
-			images: experience.images ? JSON.parse(experience.images) : [],
-			tags: experience.tags ? JSON.parse(experience.tags) : [],
-			user_application: userApplication
+		const result = {
+			...experienceData,
+			applicationCount,
+			userApplication,
+			creatorName: experienceData.creator?.name
 		};
 
-		return json(parsedExperience);
+		return json(result);
 
 	} catch (error) {
 		console.error('체험단 상세 조회 오류:', error);
@@ -64,54 +75,64 @@ export async function PUT({ params, request }) {
 			return json({ error: '인증이 필요합니다.' }, { status: 401 });
 		}
 
+		const dataSource = await getDataSource();
+		const experienceRepository = dataSource.getRepository(Experience);
+
 		// 체험단 존재 확인 및 권한 체크
-		const experienceStmt = db.prepare('SELECT created_by FROM experiences WHERE id = ?');
-		const experience = experienceStmt.get(id);
+		const experience = await experienceRepository.findOne({
+			where: { id: parseInt(id) },
+			select: ['id', 'createdById']
+		});
 
 		if (!experience) {
 			return json({ error: '체험단을 찾을 수 없습니다.' }, { status: 404 });
 		}
 
-		if (user.role !== 'admin' && user.id !== experience.created_by) {
+		if (user.role !== UserRole.ADMIN && user.id !== experience.createdById) {
 			return json({ error: '수정 권한이 없습니다.' }, { status: 403 });
 		}
 
 		const data = await request.json();
 		const {
 			title, content, category, type, region, location,
-			start_date, end_date, application_deadline,
-			max_participants, required_points, reward_points,
-			reward_description, requirements, company_name,
-			contact_info, images, tags, is_promoted, status
+			startDate, endDate, applicationDeadline,
+			maxParticipants, requiredPoints, rewardPoints,
+			rewardDescription, requirements, companyName,
+			contactInfo, images, tags, isPromoted, status
 		} = data;
 
-		const stmt = db.prepare(`
-			UPDATE experiences SET 
-				title = ?, content = ?, category = ?, type = ?, region = ?, 
-				location = ?, start_date = ?, end_date = ?, application_deadline = ?,
-				max_participants = ?, required_points = ?, reward_points = ?,
-				reward_description = ?, requirements = ?, company_name = ?,
-				contact_info = ?, images = ?, tags = ?, is_promoted = ?, 
-				status = ?, updated_at = CURRENT_TIMESTAMP
-			WHERE id = ?
-		`);
+		// 업데이트 데이터 준비
+		const updateData = {
+			title,
+			content,
+			category,
+			type,
+			region,
+			location,
+			startDate: startDate ? new Date(startDate) : null,
+			endDate: endDate ? new Date(endDate) : null,
+			applicationDeadline: applicationDeadline ? new Date(applicationDeadline) : null,
+			maxParticipants,
+			requiredPoints,
+			rewardPoints,
+			rewardDescription,
+			requirements,
+			companyName,
+			contactInfo,
+			images: images || [],
+			tags: tags || [],
+			isPromoted,
+			status
+		};
 
-		stmt.run(
-			title, content, category, type, region, location,
-			start_date, end_date, application_deadline,
-			max_participants, required_points, reward_points,
-			reward_description, requirements, company_name,
-			contact_info, JSON.stringify(images || []), JSON.stringify(tags || []),
-			is_promoted, status, id
-		);
+		await experienceRepository.update(id, updateData);
 
-		const updatedExperience = db.prepare('SELECT * FROM experiences WHERE id = ?').get(id);
-
-		return json({
-			...updatedExperience,
-			images: JSON.parse(updatedExperience.images || '[]'),
-			tags: JSON.parse(updatedExperience.tags || '[]')
+		const updatedExperience = await experienceRepository.findOne({
+			where: { id: parseInt(id) },
+			relations: ['creator']
 		});
+
+		return json(updatedExperience);
 
 	} catch (error) {
 		console.error('체험단 수정 오류:', error);
@@ -128,22 +149,33 @@ export async function DELETE({ params, request }) {
 			return json({ error: '인증이 필요합니다.' }, { status: 401 });
 		}
 
-		if (user.role !== 'admin') {
+		if (user.role !== UserRole.ADMIN) {
 			return json({ error: '관리자 권한이 필요합니다.' }, { status: 403 });
 		}
 
+		const dataSource = await getDataSource();
+		const experienceRepository = dataSource.getRepository(Experience);
+
 		// 체험단 존재 확인
-		const experienceStmt = db.prepare('SELECT id FROM experiences WHERE id = ?');
-		const experience = experienceStmt.get(id);
+		const experience = await experienceRepository.findOne({
+			where: { id: parseInt(id) }
+		});
 
 		if (!experience) {
 			return json({ error: '체험단을 찾을 수 없습니다.' }, { status: 404 });
 		}
 
-		// 관련 데이터 삭제 (신청 내역, 알림 등)
-		db.prepare('DELETE FROM experience_applications WHERE experience_id = ?').run(id);
-		db.prepare('DELETE FROM notifications WHERE reference_type = ? AND reference_id = ?').run('experience', id);
-		db.prepare('DELETE FROM experiences WHERE id = ?').run(id);
+		// 트랜잭션으로 관련 데이터 삭제
+		await dataSource.transaction(async manager => {
+			// 관련 신청 내역 삭제
+			await manager.delete('ExperienceApplication', { experienceId: parseInt(id) });
+			
+			// 관련 알림 삭제 (향후 구현 시)
+			// await manager.delete('Notification', { referenceType: 'experience', referenceId: parseInt(id) });
+			
+			// 체험단 삭제
+			await manager.delete('Experience', { id: parseInt(id) });
+		});
 
 		return json({ message: '체험단이 삭제되었습니다.' });
 

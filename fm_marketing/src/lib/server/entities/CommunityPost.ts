@@ -1,4 +1,5 @@
 // CommunityPost 엔티티
+// @ts-ignore
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
 import { User } from './User.js';
 import { Comment } from './Comment.js';
@@ -45,10 +46,10 @@ export class CommunityPost {
   updatedAt: Date;
 
   // Relations
-  @ManyToOne(() => User, user => user.posts)
+  @ManyToOne(() => User, (user: { posts: any; }) => user.posts)
   @JoinColumn({ name: 'author_id' })
   author: User;
 
-  @OneToMany(() => Comment, comment => comment.post)
+  @OneToMany(() => Comment, (comment: { post: any; }) => comment.post)
   comments: Comment[];
 }

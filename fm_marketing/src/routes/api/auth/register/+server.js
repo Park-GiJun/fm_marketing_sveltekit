@@ -29,8 +29,6 @@ export async function POST({ request }) {
 
 		const dataSource = await getDataSource();
 		const userRepository = dataSource.getRepository(User);
-		const pointRepository = dataSource.getRepository(PointTransaction);
-		const notificationRepository = dataSource.getRepository(Notification);
 
 		// 중복 검사
 		const existingUser = await userRepository.findOne({

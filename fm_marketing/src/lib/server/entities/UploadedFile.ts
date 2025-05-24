@@ -1,4 +1,5 @@
 // UploadedFile 엔티티
+// @ts-ignore
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { User } from './User.js';
 
@@ -35,7 +36,7 @@ export class UploadedFile {
   createdAt: Date;
 
   // Relations
-  @ManyToOne(() => User, user => user.uploadedFiles)
+  @ManyToOne(() => User, (user: { uploadedFiles: any; }) => user.uploadedFiles)
   @JoinColumn({ name: 'uploaded_by' })
   uploadedBy: User;
 }

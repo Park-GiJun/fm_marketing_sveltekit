@@ -1,4 +1,5 @@
 // FAQ 엔티티
+// @ts-ignore
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { User } from './User.js';
 

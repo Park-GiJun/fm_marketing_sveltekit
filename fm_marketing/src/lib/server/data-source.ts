@@ -1,6 +1,10 @@
 // TypeORM 데이터소스 설정
+
 import 'reflect-metadata';
+// @ts-ignore
 import { DataSource } from 'typeorm';
+// @ts-ignore
+import { config } from 'dotenv';
 import { dev } from '$app/environment';
 import {
   User,
@@ -15,6 +19,9 @@ import {
   FAQ,
   UploadedFile
 } from './entities/index.js';
+
+// 환경변수 로드
+config();
 
 // 환경변수에서 데이터베이스 설정 가져오기
 const DB_HOST = process.env.DB_HOST || 'localhost';

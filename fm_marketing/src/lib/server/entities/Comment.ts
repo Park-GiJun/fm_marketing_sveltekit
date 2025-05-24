@@ -1,4 +1,5 @@
 // Comment 엔티티
+// @ts-ignore
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
 import { User } from './User.js';
 import { CommunityPost } from './CommunityPost.js';

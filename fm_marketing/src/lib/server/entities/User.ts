@@ -1,4 +1,5 @@
 // User 엔티티
+// @ts-ignore
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
 import { Experience } from './Experience.js';
 import { CommunityPost } from './CommunityPost.js';
@@ -93,24 +94,24 @@ export class User {
   updatedAt: Date;
 
   // Relations
-  @OneToMany(() => Experience, experience => experience.creator)
+  @OneToMany(() => Experience, (experience: { creator: any; }) => experience.creator)
   createdExperiences: Experience[];
 
-  @OneToMany(() => CommunityPost, post => post.author)
+  @OneToMany(() => CommunityPost, (post: { author: any; }) => post.author)
   posts: CommunityPost[];
 
-  @OneToMany(() => ExperienceApplication, application => application.user)
+  @OneToMany(() => ExperienceApplication, (application: { user: any; }) => application.user)
   applications: ExperienceApplication[];
 
-  @OneToMany(() => Comment, comment => comment.author)
+  @OneToMany(() => Comment, (comment: { author: any; }) => comment.author)
   comments: Comment[];
 
-  @OneToMany(() => PointTransaction, transaction => transaction.user)
+  @OneToMany(() => PointTransaction, (transaction: { user: any; }) => transaction.user)
   pointTransactions: PointTransaction[];
 
-  @OneToMany(() => Notification, notification => notification.user)
+  @OneToMany(() => Notification, (notification: { user: any; }) => notification.user)
   notifications: Notification[];
 
-  @OneToMany(() => UploadedFile, file => file.uploadedBy)
+  @OneToMany(() => UploadedFile, (file: { uploadedBy: any; }) => file.uploadedBy)
   uploadedFiles: UploadedFile[];
 }
