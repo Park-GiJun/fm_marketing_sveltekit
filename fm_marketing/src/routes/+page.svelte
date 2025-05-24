@@ -37,7 +37,7 @@
 		<div class="banner-content">
 			<h1 class="banner-title">{banner.title}</h1>
 			<p class="banner-description">{banner.description}</p>
-			<a href={banner.buttonLink} class="banner-button">
+			<a href={banner.buttonLink}>
 				<Button variant="primary" size="lg">
 					{banner.buttonText}
 				</Button>
@@ -117,13 +117,13 @@
         color: #9ca3af;
         position: relative;
     }
-    
+
     .image-placeholder::before {
         content: "메인 배너 이미지 준비 중";
         font-size: 0.875rem;
         font-weight: 500;
     }
-    
+
     .image-placeholder::after {
         content: "📸";
         font-size: 2rem;

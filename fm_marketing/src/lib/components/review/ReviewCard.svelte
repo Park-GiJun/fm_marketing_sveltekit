@@ -1,9 +1,9 @@
 <!-- src/lib/components/review/ReviewCard.svelte -->
 <script>
 	// 리뷰 데이터 props
-	export let id = '';
+	export let id = '';              // ID를 활용하여 링크 생성에 사용
 	export let title = '';
-	export let content = '';
+	export let content = '';         // 콘텐츠 요약 표시에 사용
 	export let images = [];
 	export let daysAgo = 0;
 	export let views = 0;
@@ -20,9 +20,14 @@
 		if (days === 0) return '오늘';
 		return `${days}일 남음`;
 	}
+
+	// 콘텐츠 요약 생성
+	const contentSummary = content && content.length > 50
+		? content.substring(0, 50) + '...'
+		: content || '자세한 정보는 클릭하여 확인하세요.';
 </script>
 
-<div class="review-card">
+<a href={`/checklist/${id}`} class="review-card">
 	<div class="card-badge">
     <span class={isPromoted ? 'premium-badge' : 'normal-badge'}>
       {type}
@@ -46,6 +51,8 @@
 		</div>
 
 		<h3 class="card-title">{title}</h3>
+
+		<p class="card-description">{contentSummary}</p>
 
 		<div class="card-additional">
 			<div class="additional-content">
@@ -72,7 +79,7 @@
 			</div>
 		</div>
 	</div>
-</div>
+</a>
 
 <style>
     .review-card {
@@ -82,6 +89,9 @@
         border-radius: 0.5rem;
         overflow: hidden;
         transition: transform 0.2s, box-shadow 0.2s;
+        display: block;
+        text-decoration: none;
+        color: inherit;
     }
 
     .review-card:hover {
@@ -127,13 +137,13 @@
         justify-content: center;
         position: relative;
     }
-    
+
     .image-placeholder::before {
         content: "이미지 준비 중";
         font-size: 0.75rem;
         color: #9ca3af;
     }
-    
+
     .image-placeholder::after {
         content: "📸";
         font-size: 1.5rem;
@@ -178,6 +188,17 @@
         -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
         min-height: 2.5rem;
+    }
+
+    .card-description {
+        font-size: 0.75rem;
+        color: #6b7280;
+        margin-bottom: 0.75rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
     }
 
     .card-additional {
