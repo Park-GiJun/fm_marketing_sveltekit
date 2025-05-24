@@ -6,10 +6,12 @@ const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-key-fm-marketing';
 
 /**
  * 비밀번호 해싱
+ * @param {any} password
  */
 export async function hashPassword(password) {
   try {
-    const bcrypt = await import('bcryptjs');
+    const bcryptModule = await import('bcryptjs');
+    const bcrypt = bcryptModule.default || bcryptModule;
     const salt = await bcrypt.genSalt(12);
     return bcrypt.hash(password, salt);
   } catch (error) {
@@ -20,10 +22,13 @@ export async function hashPassword(password) {
 
 /**
  * 비밀번호 검증
+ * @param {any} password
+ * @param {any} hashedPassword
  */
 export async function verifyPassword(password, hashedPassword) {
   try {
-    const bcrypt = await import('bcryptjs');
+    const bcryptModule = await import('bcryptjs');
+    const bcrypt = bcryptModule.default || bcryptModule;
     return bcrypt.compare(password, hashedPassword);
   } catch (error) {
     console.error('bcrypt 로드 실패:', error);
@@ -33,10 +38,12 @@ export async function verifyPassword(password, hashedPassword) {
 
 /**
  * JWT 토큰 생성
+ * @param {{ userId: any; }} payload
  */
 export async function generateToken(payload) {
   try {
-    const jwt = await import('jsonwebtoken');
+    const jwtModule = await import('jsonwebtoken');
+    const jwt = jwtModule.default || jwtModule;
     return jwt.sign(payload, JWT_SECRET, {
       expiresIn: '7d',
       issuer: 'fm-marketing'
@@ -49,10 +56,12 @@ export async function generateToken(payload) {
 
 /**
  * JWT 토큰 검증
+ * @param {any} token
  */
 export async function verifyToken(token) {
   try {
-    const jwt = await import('jsonwebtoken');
+    const jwtModule = await import('jsonwebtoken');
+    const jwt = jwtModule.default || jwtModule;
     return jwt.verify(token, JWT_SECRET);
   } catch (error) {
     console.error('JWT 검증 실패:', error);
@@ -62,6 +71,7 @@ export async function verifyToken(token) {
 
 /**
  * 요청에서 사용자 정보 추출
+ * @param {{ headers: { get: (arg0: string) => { (): any; new (): any; match: { (arg0: RegExp): any[]; new (): any; }; }; }; }} request
  */
 export async function getUserFromRequest(request) {
   const authHeader = request.headers.get('authorization');
@@ -99,6 +109,7 @@ export async function getUserFromRequest(request) {
 
 /**
  * 사용자 생성
+ * @param {{ username: any; email: any; passwordHash: any; name: any; nickname: any; points: number; level: string; role: string; isVerified: boolean; }} userData
  */
 export async function createUser(userData) {
   try {
@@ -111,12 +122,14 @@ export async function createUser(userData) {
 
 /**
  * 이메일 유효성 검사
+ * @param {string} email
  */
 export function isValidEmail(email) {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
 }
 
+// @ts-ignore
 /**
  * 비밀번호 유효성 검사
  */
@@ -126,6 +139,7 @@ export function isValidPassword(password) {
 
 /**
  * 사용자명 유효성 검사
+ * @param {string} username
  */
 export function isValidUsername(username) {
   const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;

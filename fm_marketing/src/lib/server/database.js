@@ -1,8 +1,15 @@
-// 순수 MySQL2를 사용한 데이터베이스 연결
+// 안정화된 MySQL2 데이터베이스 연결 - 무조건 DB 사용
 import { dev } from '$app/environment';
 
+/**
+ * @type {import("mysql2/promise").Pool | null}
+ */
 let pool = null;
 let isInitialized = false;
+/**
+ * @type {Promise<any> | null}
+ */
+let initializationPromise = null;
 
 /**
  * MySQL 연결 풀 생성
@@ -27,15 +34,23 @@ async function createPool() {
       charset: 'utf8mb4',
       waitForConnections: true,
       connectionLimit: 10,
-      queueLimit: 0
+      queueLimit: 0,
+      acquireTimeout: 60000,
+      timeout: 60000
     };
 
+    console.log(`📍 데이터베이스 연결 시도: ${dbConfig.host}:${dbConfig.port}/${dbConfig.database}`);
+    
     pool = mysql.createPool(dbConfig);
     
     // 연결 테스트
     const connection = await pool.getConnection();
-    await connection.execute('SELECT 1');
+    const [result] = await connection.execute('SELECT 1 as test');
     connection.release();
+    
+    if (result[0].test !== 1) {
+      throw new Error('데이터베이스 연결 테스트 실패');
+    }
     
     console.log('✅ MySQL 데이터베이스 연결 성공');
     return pool;
@@ -43,107 +58,37 @@ async function createPool() {
   } catch (error) {
     console.error('❌ MySQL 데이터베이스 연결 실패:', error);
     pool = null;
-    throw error;
+    throw new Error(`데이터베이스 연결 실패: ${error.message}`);
   }
 }
 
 /**
- * 데이터베이스 초기화
+ * 직접 쿼리 실행 (풀을 직접 사용)
  */
-export async function initializeDatabase() {
-  if (isInitialized) return pool;
-
-  try {
-    console.log('🔄 MySQL 데이터베이스 초기화 중...');
-    
-    await createPool();
-    
-    // 테이블 생성
-    await createTables();
-    
-    // 시드 데이터 생성
-    if (dev) {
-      await createSeedData();
-    }
-    
-    isInitialized = true;
-    console.log('✅ 데이터베이스 초기화 완료');
-    return pool;
-
-  } catch (error) {
-    console.error('❌ 데이터베이스 초기화 실패:', error);
-    
-    if (dev) {
-      console.warn('개발 환경에서 계속 진행 (연결 실패 시 오류 반환)');
-      isInitialized = true;
-      return null;
-    }
-    throw error;
+async function executeDirectQuery(sql, params = []) {
+  if (!pool) {
+    throw new Error('데이터베이스 연결 풀이 없습니다.');
   }
-}
-
-/**
- * 데이터베이스 연결 가져오기
- */
-export async function getDatabase() {
-  if (!isInitialized) {
-    await initializeDatabase();
-  }
-  return pool;
-}
-
-/**
- * 쿼리 실행
- */
-export async function executeQuery(sql, params = []) {
-  try {
-    const db = await getDatabase();
-    if (!db) {
-      throw new Error('데이터베이스 연결이 없습니다.');
-    }
-    
-    const [rows] = await db.execute(sql, params);
-    return rows;
-  } catch (error) {
-    console.error('쿼리 실행 오류:', error);
-    throw error;
-  }
-}
-
-/**
- * 트랜잭션 실행
- */
-export async function executeTransaction(queries) {
-  const db = await getDatabase();
-  if (!db) {
-    throw new Error('데이터베이스 연결이 없습니다.');
-  }
-
-  const connection = await db.getConnection();
   
   try {
-    await connection.beginTransaction();
-    
-    const results = [];
-    for (const { sql, params } of queries) {
-      const [result] = await connection.execute(sql, params);
-      results.push(result);
-    }
-    
-    await connection.commit();
-    return results;
+    const [rows] = await pool.execute(sql, params);
+    return rows;
   } catch (error) {
-    await connection.rollback();
+    console.error('직접 쿼리 실행 오류:', error);
     throw error;
-  } finally {
-    connection.release();
   }
 }
 
 /**
- * 테이블 생성
+ * 테이블 생성 (풀 직접 사용)
  */
 async function createTables() {
+  if (!pool) {
+    throw new Error('데이터베이스 연결이 없어 테이블을 생성할 수 없습니다.');
+  }
+  
+  console.log('📋 테이블 생성 중...');
+  
   const tables = [
     `CREATE TABLE IF NOT EXISTS users (
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -245,34 +190,44 @@ async function createTables() {
   ];
   
   for (const table of tables) {
-    await executeQuery(table);
+    try {
+      await executeDirectQuery(table);
+    } catch (error) {
+      console.error('테이블 생성 실패:', error);
+      throw error;
+    }
   }
   
   console.log('✅ 테이블 생성 완료');
 }
 
 /**
- * 시드 데이터 생성
+ * 시드 데이터 생성 (풀 직접 사용)
  */
 async function createSeedData() {
+  if (!pool) {
+    throw new Error('데이터베이스 연결이 없어 시드 데이터를 생성할 수 없습니다.');
+  }
+  
   try {
     // 기존 관리자 계정 확인
-    const existingAdmin = await executeQuery('SELECT id FROM users WHERE username = ?', ['admin']);
+    const existingAdmin = await executeDirectQuery('SELECT id FROM users WHERE username = ?', ['admin']);
     
     if (existingAdmin.length > 0) {
-      console.log('시드 데이터가 이미 존재합니다.');
+      console.log('✅ 시드 데이터가 이미 존재합니다.');
       return;
     }
     
-    console.log('시드 데이터 생성 중...');
+    console.log('📝 시드 데이터 생성 중...');
     
     // bcrypt 동적 import
-    const bcrypt = await import('bcryptjs');
+    const bcryptModule = await import('bcryptjs');
+    const bcrypt = bcryptModule.default || bcryptModule;
     
     // 관리자 계정 생성
     const adminPassword = await bcrypt.hash('admin123!', 12);
     
-    await executeQuery(`
+    await executeDirectQuery(`
       INSERT INTO users (username, email, password_hash, name, nickname, points, role, level, is_verified)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, ['admin', 'admin@fmmarketing.com', adminPassword, '관리자', '관리자', 50000, 'admin', 'platinum', 1]);
@@ -280,13 +235,13 @@ async function createSeedData() {
     // 테스트 사용자 생성
     const userPassword = await bcrypt.hash('user123!', 12);
     
-    await executeQuery(`
+    await executeDirectQuery(`
       INSERT INTO users (username, email, password_hash, name, nickname, points, level, is_verified)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `, ['user1', 'user1@example.com', userPassword, '김철수', '철수', 5000, 'bronze', 1]);
     
     // 체험단 데이터 생성
-    await executeQuery(`
+    await executeDirectQuery(`
       INSERT INTO experiences (title, content, category, type, region, location, start_date, end_date, application_deadline, max_participants, current_participants, required_points, reward_points, reward_description, requirements, company_name, contact_info, images, tags, status, is_promoted, views, likes, created_by)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
@@ -319,8 +274,102 @@ async function createSeedData() {
     console.log('✅ 시드 데이터 생성 완료');
     
   } catch (error) {
-    console.error('시드 데이터 생성 오류:', error);
-    // 시드 데이터 생성 실패해도 앱은 계속 실행
+    console.error('❌ 시드 데이터 생성 오류:', error);
+    throw error;
+  }
+}
+
+/**
+ * 데이터베이스 초기화 (순차적 실행)
+ */
+export async function initializeDatabase() {
+  // 이미 초기화가 진행 중이거나 완료된 경우
+  if (initializationPromise) {
+    return await initializationPromise;
+  }
+  
+  if (isInitialized && pool) {
+    return pool;
+  }
+
+  // 새로운 초기화 시작
+  initializationPromise = (async () => {
+    try {
+      console.log('🚀 MySQL 데이터베이스 초기화 시작...');
+      
+      // 1. 연결 풀 생성
+      await createPool();
+      
+      // 2. 테이블 생성
+      await createTables();
+      
+      // 3. 시드 데이터 생성
+      await createSeedData();
+      
+      isInitialized = true;
+      console.log('✅ 데이터베이스 초기화 완료');
+      return pool;
+      
+    } catch (error) {
+      console.error('❌ 데이터베이스 초기화 실패:', error);
+      // 초기화 실패 시 상태 리셋
+      isInitialized = false;
+      pool = null;
+      initializationPromise = null;
+      throw new Error(`데이터베이스 초기화 실패: ${error.message}`);
+    }
+  })();
+
+  return await initializationPromise;
+}
+
+/**
+ * 데이터베이스 연결 가져오기
+ */
+export async function getDatabase() {
+  if (!isInitialized || !pool) {
+    throw new Error('데이터베이스가 초기화되지 않았습니다. initializeDatabase()를 먼저 호출하세요.');
+  }
+  return pool;
+}
+
+/**
+ * 쿼리 실행
+ */
+export async function executeQuery(sql, params = []) {
+  try {
+    const db = await getDatabase();
+    const [rows] = await db.execute(sql, params);
+    return rows;
+  } catch (error) {
+    console.error('쿼리 실행 오류:', error);
+    throw error;
+  }
+}
+
+/**
+ * 트랜잭션 실행
+ */
+export async function executeTransaction(queries) {
+  const db = await getDatabase();
+  const connection = await db.getConnection();
+  
+  try {
+    await connection.beginTransaction();
+    
+    const results = [];
+    for (const { sql, params } of queries) {
+      const [result] = await connection.execute(sql, params);
+      results.push(result);
+    }
+    
+    await connection.commit();
+    return results;
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
   }
 }
 
@@ -349,7 +398,7 @@ export async function findUser(criteria) {
     return users[0] || null;
   } catch (error) {
     console.error('사용자 조회 오류:', error);
-    return null;
+    throw error;
   }
 }
 
@@ -445,11 +494,12 @@ export async function findExperiences(filters = {}) {
       ...exp,
       images: exp.images ? JSON.parse(exp.images) : [],
       tags: exp.tags ? JSON.parse(exp.tags) : [],
-      creatorName: exp.creator_name
+      creatorName: exp.creator_name,
+      daysAgo: Math.ceil((new Date(exp.application_deadline) - new Date()) / (1000 * 60 * 60 * 24))
     }));
   } catch (error) {
     console.error('체험단 조회 오류:', error);
-    return [];
+    throw error;
   }
 }
 
@@ -513,6 +563,6 @@ export async function findCommunityPosts(filters = {}) {
     }));
   } catch (error) {
     console.error('커뮤니티 게시글 조회 오류:', error);
-    return [];
+    throw error;
   }
 }
