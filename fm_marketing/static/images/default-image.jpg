@@ -1,0 +1,11 @@
+# 이 파일은 실제 이미지 파일이 아닙니다.
+# 실제 개발에서는 여기에 기본 이미지 파일을 배치하세요.
+
+# 예시 구조:
+# static/
+# ├── images/
+# │   ├── events/
+# │   ├── community/  
+# │   ├── profiles/
+# │   └── default-image.jpg
+# └── favicon.png

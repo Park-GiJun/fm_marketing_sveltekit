@@ -1,7 +1,14 @@
-import tailwindcss from '@tailwindcss/vite';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-	plugins: [tailwindcss(), sveltekit()]
+	plugins: [sveltekit()],
+	optimizeDeps: {
+		include: ['jimp']
+	},
+	build: {
+		commonjsOptions: {
+			include: [/jimp/, /node_modules/]
+		}
+	}
 });

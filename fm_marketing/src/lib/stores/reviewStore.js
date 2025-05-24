@@ -36,7 +36,7 @@ function createDummyReviews() {
 			id: `dummy-${i + 1}`,
 			title: titles[titleIndex],
 			content: '더미 콘텐츠 내용...',
-			images: Array.from({ length: randomInt(1, 4) }, (_, j) => `dummy-image-${j + 1}.jpg`),
+			images: Array.from({ length: randomInt(1, 4) }, (_, j) => `/images/default-image.jpg`),
 			daysAgo: randomInt(0, 15),
 			views: randomInt(10, 200),
 			likes: randomInt(0, 50),
