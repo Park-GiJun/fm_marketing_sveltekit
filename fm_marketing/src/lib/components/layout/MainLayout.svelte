@@ -1,4 +1,5 @@
 <!-- src/lib/components/layout/MainLayout.svelte -->
+<!-- src/lib/components/layout/MainLayout.svelte -->
 <script>
 	import Header from '$lib/components/common/Header.svelte';
 	import Footer from '$lib/components/common/Footer.svelte';
