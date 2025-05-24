@@ -5,9 +5,12 @@
 	import Badge from '$lib/components/common/Badge.svelte';
 	import Button from '$lib/components/common/Button.svelte';
 	import { reviewStore } from '$lib/stores/reviewStore.js';
+	import { userStore } from '$lib/stores/userStore.js';
+	import { onMount } from 'svelte';
 
 	// 현재 선택된 지역
 	let selectedRegion = '전체';
+	let isAdmin = false;
 
 	// 지역 변경 핸들러
 	function handleRegionChange(event) {
@@ -24,6 +27,17 @@
 		buttonText: '체험단 신청하기',
 		buttonLink: '/apply'
 	};
+
+	onMount(() => {
+		// 관리자 권한 확인
+		const unsubscribe = userStore.subscribe(state => {
+			isAdmin = state.user?.role === 'admin';
+		});
+
+		return () => {
+			unsubscribe();
+		};
+	});
 </script>
 
 <svelte:head>
@@ -32,6 +46,21 @@
 </svelte:head>
 
 <MainLayout bind:selectedRegion on:regionSelect={handleRegionChange}>
+	<!-- 관리자 버튼 (우측 상단) -->
+	{#if isAdmin}
+		<div class="admin-actions">
+			<a href="/admin/experiences/new">
+				<Button variant="secondary" size="md">
+					<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 0.5rem;">
+						<line x1="12" y1="5" x2="12" y2="19"></line>
+						<line x1="5" y1="12" x2="19" y2="12"></line>
+					</svg>
+					체험단 등록
+				</Button>
+			</a>
+		</div>
+	{/if}
+
 	<!-- 배너 섹션 -->
 	<section class="banner-section">
 		<div class="banner-content">
@@ -66,6 +95,13 @@
 </MainLayout>
 
 <style>
+    .admin-actions {
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+        z-index: 10;
+    }
+
     .banner-section {
         display: grid;
         grid-template-columns: 1fr;
@@ -134,6 +170,14 @@
         .banner-section {
             grid-template-columns: 1fr 1fr;
             align-items: center;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .admin-actions {
+            position: static;
+            margin-bottom: 1rem;
+            text-align: center;
         }
     }
 </style>

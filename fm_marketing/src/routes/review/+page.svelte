@@ -2,6 +2,7 @@
 <script>
   import { onMount } from 'svelte';
   import { reviewStore } from '$lib/stores/reviewStore.js';
+  import { userStore } from '$lib/stores/userStore.js';
   import MainLayout from '$lib/components/layout/MainLayout.svelte';
   import ReviewList from '$lib/components/review/ReviewList.svelte';
   import ReviewFilter from '$lib/components/review/ReviewFilter.svelte';
@@ -12,6 +13,7 @@
   let reviews = [];
   let currentPage = 1;
   let totalPages = 10;
+  let isAdmin = false;
   
   // 필터 상태
   let currentCategory = '카테고리';
@@ -67,6 +69,15 @@
   
   onMount(() => {
     loadReviews();
+    
+    // 관리자 권한 확인
+    const unsubscribe = userStore.subscribe(state => {
+      isAdmin = state.user?.role === 'admin';
+    });
+    
+    return () => {
+      unsubscribe();
+    };
   });
 </script>
 
@@ -78,8 +89,21 @@
 <MainLayout>
   <div class="review-page-container">
     <div class="page-header">
-      <h1 class="page-title">체험단 리뷰</h1>
-      <p class="page-description">실제 참여한 체험단 리뷰를 확인하고 나에게 맞는 체험단을 찾아보세요.</p>
+      <div>
+        <h1 class="page-title">체험단 리뷰</h1>
+        <p class="page-description">실제 참여한 체험단 리뷰를 확인하고 나에게 맞는 체험단을 찾아보세요.</p>
+      </div>
+      {#if isAdmin}
+        <a href="/admin/experiences/new">
+          <Button variant="secondary" size="md">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 0.5rem;">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            체험단 등록
+          </Button>
+        </a>
+      {/if}
     </div>
     
     <!-- 검색 및 필터 영역 -->
@@ -218,8 +242,14 @@
   }
   
   .page-header {
-    text-align: center;
     margin-bottom: 3rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .page-header > div {
+    flex: 1;
   }
   
   .page-title {

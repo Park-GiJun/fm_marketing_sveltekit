@@ -59,6 +59,9 @@
 				<li><a href="/community">커뮤니티</a></li>
 				<li><a href="/event">공지/이벤트</a></li>
 				<li><a href="/guide">이용가이드</a></li>
+				{#if user?.role === 'admin'}
+					<li><a href="/experiences/new" class="nav-new">체험단 등록</a></li>
+				{/if}
 			</ul>
 		</nav>
 
@@ -137,6 +140,9 @@
 					<li><a href="/community">커뮤니티</a></li>
 					<li><a href="/event">공지/이벤트</a></li>
 					<li><a href="/guide">이용가이드</a></li>
+					{#if user?.role === 'admin'}
+						<li><a href="/experiences/new">체험단 등록</a></li>
+					{/if}
 					{#if isAuthenticated}
 						<li><a href="/mypage">마이페이지</a></li>
 						<li><a href="/notifications">알림 설정</a></li>
@@ -244,6 +250,15 @@
 
     .nav-links a:hover {
         color: #4c96d7;
+    }
+
+    .nav-new {
+        color: #5ce0c6 !important;
+        font-weight: 600;
+    }
+
+    .nav-new:hover {
+        color: #4bc0a9 !important;
     }
 
     .header-actions {
