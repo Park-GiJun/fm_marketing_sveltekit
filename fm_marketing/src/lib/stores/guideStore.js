@@ -1,5 +1,6 @@
 // src/lib/stores/guideStore.js
 import { writable } from 'svelte/store';
+import { apiClient } from '$lib/utils/api.js';
 
 function createGuideStore() {
   const { subscribe, set, update } = writable({

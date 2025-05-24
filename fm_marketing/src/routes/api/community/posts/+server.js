@@ -1,9 +1,8 @@
-// 커뮤니티 게시글 목록 조회/생성 API
+// 커뮤니티 게시글 목록 조회/생성 API - TypeORM 통합 버전
 import { json } from '@sveltejs/kit';
-import { getDataSource } from '$lib/server/data-source.js';
-import { CommunityPost } from '$lib/server/entities/CommunityPost.js';
-import { User } from '$lib/server/entities/User.js';
-import { getUserFromRequest } from '$lib/server/auth.js';
+import { getDataSource } from '$lib/server/data-source-unified.js';
+import { CommunityPost, User } from '$lib/server/entities/index.js';
+import { getUserFromRequest } from '$lib/server/auth-unified.js';
 import { processEntityJsonFields } from '$lib/server/utils/json-helper.js';
 
 export async function GET({ url }) {
@@ -22,7 +21,7 @@ export async function GET({ url }) {
 		let queryBuilder = postRepository
 			.createQueryBuilder('post')
 			.leftJoinAndSelect('post.author', 'author')
-			.leftJoin('post.comments', 'comments')
+			.leftJoin('post.comments', 'comments', 'comments.isDeleted = :isDeleted', { isDeleted: false })
 			.addSelect('COUNT(comments.id)', 'commentCount')
 			.where('post.isDeleted = :isDeleted', { isDeleted: false })
 			.groupBy('post.id')

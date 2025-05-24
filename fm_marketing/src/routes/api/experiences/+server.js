@@ -1,7 +1,9 @@
-// 체험단 목록 조회/생성 API
+// 체험단 목록 조회/생성 API - TypeORM 통합 버전
 import { json } from '@sveltejs/kit';
 import { getDataSource } from '$lib/server/data-source-unified.js';
-import { getUserFromRequest } from '$lib/server/auth.js';
+import { Experience, User } from '$lib/server/entities/index.js';
+import { getUserFromRequest } from '$lib/server/auth-unified.js';
+import { processEntityJsonFields } from '$lib/server/utils/json-helper.js';
 
 export async function GET({ url }) {
   try {
@@ -15,69 +17,94 @@ export async function GET({ url }) {
     const offset = (page - 1) * limit;
 
     const dataSource = await getDataSource();
+    const experienceRepository = dataSource.getRepository(Experience);
 
-    // 기본 쿼리
-    let whereClause = "WHERE status = 'active'";
-    let params = [];
+    // 쿼리 빌더 생성
+    let queryBuilder = experienceRepository
+      .createQueryBuilder('experience')
+      .leftJoinAndSelect('experience.creator', 'creator')
+      .leftJoin('experience.applications', 'applications')
+      .addSelect('COUNT(applications.id)', 'applicationCount')
+      .where('experience.status = :status', { status: 'active' })
+      .groupBy('experience.id')
+      .addGroupBy('creator.id');
 
     // 지역 필터
     if (region && region !== '전체') {
-      whereClause += " AND region = ?";
-      params.push(region);
+      queryBuilder.andWhere('experience.region = :region', { region });
     }
 
     // 카테고리 필터
     if (category && category !== '카테고리') {
-      whereClause += " AND category = ?";
-      params.push(category);
+      queryBuilder.andWhere('experience.category = :category', { category });
     }
 
     // 타입 필터
     if (type && type !== '유형') {
-      whereClause += " AND type = ?";
-      params.push(type);
+      queryBuilder.andWhere('experience.type = :type', { type });
     }
 
     // 검색어 필터
     if (search) {
-      whereClause += " AND (title LIKE ? OR content LIKE ?)";
-      params.push(`%${search}%`, `%${search}%`);
+      queryBuilder.andWhere(
+        '(experience.title LIKE :search OR experience.content LIKE :search)',
+        { search: `%${search}%` }
+      );
     }
 
     // 정렬 조건
-    let orderClause = "ORDER BY created_at DESC";
-    if (sort === 'popular') {
-      orderClause = "ORDER BY views DESC, likes DESC";
-    } else if (sort === 'deadline') {
-      orderClause = "ORDER BY application_deadline ASC";
+    switch (sort) {
+      case 'popular':
+        queryBuilder.orderBy('experience.views', 'DESC')
+          .addOrderBy('experience.likes', 'DESC');
+        break;
+      case 'deadline':
+        queryBuilder.orderBy('experience.applicationDeadline', 'ASC');
+        break;
+      default: // latest
+        queryBuilder.orderBy('experience.createdAt', 'DESC');
     }
 
     // 총 개수 조회
-    const [countResult] = await dataSource.query(`
-      SELECT COUNT(*) as total FROM experiences ${whereClause}
-    `, params);
+    const totalQueryBuilder = experienceRepository
+      .createQueryBuilder('experience')
+      .where('experience.status = :status', { status: 'active' });
 
-    const total = countResult.total;
+    if (region && region !== '전체') {
+      totalQueryBuilder.andWhere('experience.region = :region', { region });
+    }
+    if (category && category !== '카테고리') {
+      totalQueryBuilder.andWhere('experience.category = :category', { category });
+    }
+    if (type && type !== '유형') {
+      totalQueryBuilder.andWhere('experience.type = :type', { type });
+    }
+    if (search) {
+      totalQueryBuilder.andWhere(
+        '(experience.title LIKE :search OR experience.content LIKE :search)',
+        { search: `%${search}%` }
+      );
+    }
+
+    const total = await totalQueryBuilder.getCount();
 
     // 데이터 조회
-    const experiences = await dataSource.query(`
-      SELECT e.*, u.name as creator_name 
-      FROM experiences e 
-      LEFT JOIN users u ON e.created_by = u.id 
-      ${whereClause} 
-      ${orderClause} 
-      LIMIT ? OFFSET ?
-    `, [...params, limit, offset]);
+    const rawResults = await queryBuilder
+      .offset(offset)
+      .limit(limit)
+      .getRawAndEntities();
 
-    // JSON 필드 파싱
-    const processedExperiences = experiences.map(exp => ({
-      ...exp,
-      images: exp.images ? JSON.parse(exp.images) : [],
-      tags: exp.tags ? JSON.parse(exp.tags) : []
-    }));
+    const experiences = rawResults.entities.map((experience, index) => {
+      const processed = processEntityJsonFields(experience, ['images', 'tags']);
+      return {
+        ...processed,
+        applicationCount: parseInt(rawResults.raw[index].applicationCount) || 0,
+        creatorName: experience.creator?.name
+      };
+    });
 
     return json({
-      experiences: processedExperiences,
+      experiences,
       pagination: {
         page,
         limit,
@@ -119,25 +146,40 @@ export async function POST({ request }) {
     }
 
     const dataSource = await getDataSource();
+    const experienceRepository = dataSource.getRepository(Experience);
 
-    const result = await dataSource.query(`
-      INSERT INTO experiences (
-        title, content, category, type, region, location,
-        start_date, end_date, application_deadline,
-        max_participants, required_points, reward_points,
-        reward_description, requirements, company_name,
-        contact_info, images, tags, is_promoted, created_by
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [
-      title, content, category, type, region, location,
-      startDate, endDate, applicationDeadline,
-      maxParticipants, requiredPoints || 0, rewardPoints || 0,
-      rewardDescription, requirements, companyName,
-      contactInfo, JSON.stringify(images || []), JSON.stringify(tags || []), 
-      isPromoted || false, user.id
-    ]);
+    const experience = experienceRepository.create({
+      title,
+      content,
+      category,
+      type,
+      region,
+      location,
+      startDate: startDate ? new Date(startDate) : null,
+      endDate: endDate ? new Date(endDate) : null,
+      applicationDeadline: applicationDeadline ? new Date(applicationDeadline) : null,
+      maxParticipants,
+      requiredPoints: requiredPoints || 0,
+      rewardPoints: rewardPoints || 0,
+      rewardDescription,
+      requirements,
+      companyName,
+      contactInfo,
+      images: JSON.stringify(images || []),
+      tags: JSON.stringify(tags || []),
+      isPromoted: !!isPromoted,
+      createdById: user.id
+    });
 
-    return json({ id: result.insertId, message: '체험단이 생성되었습니다.' }, { status: 201 });
+    const savedExperience = await experienceRepository.save(experience);
+
+    // 작성자 정보와 함께 반환
+    const experienceWithCreator = await experienceRepository.findOne({
+      where: { id: savedExperience.id },
+      relations: ['creator']
+    });
+
+    return json(experienceWithCreator, { status: 201 });
 
   } catch (error) {
     console.error('체험단 생성 오류:', error);

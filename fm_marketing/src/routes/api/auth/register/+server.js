@@ -1,7 +1,8 @@
-// 회원가입 API
+// 회원가입 API - TypeORM 통합 버전
 import { json } from '@sveltejs/kit';
 import { getDataSource } from '$lib/server/data-source-unified.js';
-import { hashPassword, generateToken, isValidEmail, isValidPassword, isValidUsername } from '$lib/server/auth.js';
+import { User, PointTransaction } from '$lib/server/entities/index.js';
+import { hashPassword, generateToken, isValidEmail, isValidPassword, isValidUsername } from '$lib/server/auth-unified.js';
 
 export async function POST({ request }) {
   try {
@@ -25,11 +26,14 @@ export async function POST({ request }) {
     }
 
     const dataSource = await getDataSource();
+    const userRepository = dataSource.getRepository(User);
+    const pointRepository = dataSource.getRepository(PointTransaction);
 
     // 중복 검사
-    const [existingUser] = await dataSource.query(`
-      SELECT id FROM users WHERE username = ? OR email = ?
-    `, [username, email]);
+    const existingUser = await userRepository
+      .createQueryBuilder('user')
+      .where('user.username = :username OR user.email = :email', { username, email })
+      .getOne();
 
     if (existingUser) {
       return json({ error: '이미 사용 중인 사용자명 또는 이메일입니다.' }, { status: 409 });
@@ -38,30 +42,45 @@ export async function POST({ request }) {
     // 비밀번호 해싱
     const passwordHash = await hashPassword(password);
 
-    // 사용자 생성
-    const result = await dataSource.query(`
-      INSERT INTO users (username, email, password_hash, name, nickname, points, level, role)
-      VALUES (?, ?, ?, ?, ?, 1000, 'bronze', 'user')
-    `, [username, email, passwordHash, name, nickname || name]);
+    // 트랜잭션으로 사용자 생성 및 포인트 지급
+    const result = await dataSource.transaction(async manager => {
+      // 사용자 생성
+      const user = manager.create(User, {
+        username,
+        email,
+        passwordHash,
+        name,
+        nickname: nickname || name,
+        points: 1000,
+        level: 'bronze',
+        role: 'user'
+      });
+      const savedUser = await manager.save(user);
 
-    const userId = result.insertId;
+      // 회원가입 축하 포인트 지급
+      const pointTransaction = manager.create(PointTransaction, {
+        userId: savedUser.id,
+        type: 'earn',
+        amount: 1000,
+        description: '회원가입 축하 포인트',
+        referenceType: 'signup'
+      });
+      await manager.save(pointTransaction);
 
-    // 포인트 이력 추가
-    await dataSource.query(`
-      INSERT INTO point_transactions (user_id, type, amount, description, reference_type)
-      VALUES (?, 'earn', 1000, '회원가입 축하 포인트', 'signup')
-    `, [userId]);
-
-    // 생성된 사용자 정보 조회
-    const [newUser] = await dataSource.query(`
-      SELECT id, username, email, name, nickname, profile_image, points, level, role, is_active, is_verified
-      FROM users WHERE id = ?
-    `, [userId]);
+      return savedUser;
+    });
 
     // JWT 토큰 생성
-    const token = await generateToken({ userId: newUser.id, username, email });
+    const token = await generateToken({ 
+      userId: result.id, 
+      username: result.username, 
+      email: result.email 
+    });
 
-    return json({ user: newUser, token }, { status: 201 });
+    // 사용자 정보 반환 (비밀번호 제외)
+    const { passwordHash, ...userInfo } = result;
+
+    return json({ user: userInfo, token }, { status: 201 });
 
   } catch (error) {
     console.error('회원가입 오류:', error);
