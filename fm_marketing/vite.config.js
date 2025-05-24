@@ -11,15 +11,18 @@ export default defineConfig({
     global: 'globalThis',
   },
   optimizeDeps: {
-    exclude: ['typeorm']
+    exclude: ['typeorm', 'mysql2', 'reflect-metadata', 'bcryptjs', 'jsonwebtoken']
   },
   ssr: {
-    external: ['typeorm', 'mysql2', 'reflect-metadata'],
+    external: ['typeorm', 'mysql2', 'reflect-metadata', 'bcryptjs', 'jsonwebtoken'],
     noExternal: []
   },
   build: {
     rollupOptions: {
-      external: ['typeorm', 'mysql2', 'reflect-metadata']
+      external: ['typeorm', 'mysql2', 'reflect-metadata', 'bcryptjs', 'jsonwebtoken']
     }
+  },
+  esbuild: {
+    target: 'node18'
   }
 });

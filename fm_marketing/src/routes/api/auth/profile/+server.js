@@ -1,37 +1,44 @@
-// 사용자 프로필 조회/수정 API
+// 사용자 프로필 조회/수정 API - 간단한 더미 데이터 버전
 import { json } from '@sveltejs/kit';
-import { getDataSource } from '$lib/server/data-source-unified.js';
-import { User } from '$lib/server/entities/index.js';
-import { getUserFromRequest, hashPassword, isValidEmail } from '$lib/server/auth-unified.js';
+
+// 더미 사용자 데이터
+const dummyUser = {
+  id: 1,
+  username: 'testuser',
+  email: 'test@example.com',
+  name: '테스트 사용자',
+  nickname: '테스트',
+  profileImage: null,
+  phone: null,
+  birthDate: null,
+  gender: null,
+  address: null,
+  blogUrl: null,
+  instagramUrl: null,
+  youtubeUrl: null,
+  points: 5000,
+  level: 'bronze',
+  role: 'user',
+  isActive: true,
+  isVerified: true,
+  createdAt: '2025-01-01T00:00:00Z',
+  updatedAt: '2025-01-01T00:00:00Z'
+};
+
+function isValidEmail(email) {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+}
 
 export async function GET({ request }) {
   try {
-    const user = await getUserFromRequest(request);
-
-    if (!user) {
+    // 더미 인증 체크 (실제로는 JWT 토큰 검증)
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader) {
       return json({ error: '인증이 필요합니다.' }, { status: 401 });
     }
 
-    const dataSource = await getDataSource();
-    const userRepository = dataSource.getRepository(User);
-
-    // 최신 사용자 정보 조회
-    const currentUser = await userRepository.findOne({
-      where: { id: user.id },
-      select: [
-        'id', 'username', 'email', 'name', 'nickname', 
-        'profileImage', 'phone', 'birthDate', 'gender', 
-        'address', 'blogUrl', 'instagramUrl', 'youtubeUrl',
-        'points', 'level', 'role', 'isActive', 'isVerified',
-        'createdAt', 'updatedAt'
-      ]
-    });
-
-    if (!currentUser) {
-      return json({ error: '사용자를 찾을 수 없습니다.' }, { status: 404 });
-    }
-
-    return json(currentUser);
+    return json(dummyUser);
 
   } catch (error) {
     console.error('프로필 조회 오류:', error);
@@ -41,9 +48,9 @@ export async function GET({ request }) {
 
 export async function PUT({ request }) {
   try {
-    const user = await getUserFromRequest(request);
-
-    if (!user) {
+    // 더미 인증 체크
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader) {
       return json({ error: '인증이 필요합니다.' }, { status: 401 });
     }
 
@@ -58,48 +65,21 @@ export async function PUT({ request }) {
       return json({ error: '올바른 이메일 형식이 아닙니다.' }, { status: 400 });
     }
 
-    const dataSource = await getDataSource();
-    const userRepository = dataSource.getRepository(User);
-
-    // 이메일 중복 검사 (현재 사용자 제외)
-    if (email && email !== user.email) {
-      const existingUser = await userRepository
-        .createQueryBuilder('user')
-        .where('user.email = :email AND user.id != :userId', { email, userId: user.id })
-        .getOne();
-
-      if (existingUser) {
-        return json({ error: '이미 사용 중인 이메일입니다.' }, { status: 409 });
-      }
-    }
-
-    // 업데이트 데이터 준비
-    const updateData = {};
-    if (email) updateData.email = email;
-    if (name) updateData.name = name;
-    if (nickname !== undefined) updateData.nickname = nickname;
-    if (phone !== undefined) updateData.phone = phone;
-    if (birthDate !== undefined) updateData.birthDate = birthDate ? new Date(birthDate) : null;
-    if (gender !== undefined) updateData.gender = gender;
-    if (address !== undefined) updateData.address = address;
-    if (blogUrl !== undefined) updateData.blogUrl = blogUrl;
-    if (instagramUrl !== undefined) updateData.instagramUrl = instagramUrl;
-    if (youtubeUrl !== undefined) updateData.youtubeUrl = youtubeUrl;
-
-    // 사용자 정보 업데이트
-    await userRepository.update({ id: user.id }, updateData);
-
-    // 업데이트된 사용자 정보 조회
-    const updatedUser = await userRepository.findOne({
-      where: { id: user.id },
-      select: [
-        'id', 'username', 'email', 'name', 'nickname', 
-        'profileImage', 'phone', 'birthDate', 'gender', 
-        'address', 'blogUrl', 'instagramUrl', 'youtubeUrl',
-        'points', 'level', 'role', 'isActive', 'isVerified',
-        'createdAt', 'updatedAt'
-      ]
-    });
+    // 더미 사용자 정보 업데이트
+    const updatedUser = {
+      ...dummyUser,
+      email: email || dummyUser.email,
+      name: name || dummyUser.name,
+      nickname: nickname !== undefined ? nickname : dummyUser.nickname,
+      phone: phone !== undefined ? phone : dummyUser.phone,
+      birthDate: birthDate !== undefined ? birthDate : dummyUser.birthDate,
+      gender: gender !== undefined ? gender : dummyUser.gender,
+      address: address !== undefined ? address : dummyUser.address,
+      blogUrl: blogUrl !== undefined ? blogUrl : dummyUser.blogUrl,
+      instagramUrl: instagramUrl !== undefined ? instagramUrl : dummyUser.instagramUrl,
+      youtubeUrl: youtubeUrl !== undefined ? youtubeUrl : dummyUser.youtubeUrl,
+      updatedAt: new Date().toISOString()
+    };
 
     return json(updatedUser);
 

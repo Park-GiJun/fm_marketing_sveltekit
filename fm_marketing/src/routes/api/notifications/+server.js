@@ -1,139 +1,123 @@
-// 알림 목록 조회/생성 API
+// 알림 목록 조회/생성 API - 간단한 더미 데이터 버전
 import { json } from '@sveltejs/kit';
-import { getDataSource } from '$lib/server/data-source.js';
-import { Notification, NotificationPriority } from '$lib/server/entities/Notification.js';
-import { User, UserRole } from '$lib/server/entities/User.js';
-import { getUserFromRequest } from '$lib/server/auth.js';
+
+// 더미 알림 데이터
+const dummyNotifications = [
+  {
+    id: 1,
+    userId: 1,
+    type: 'application_result',
+    title: '체험단 선정 안내',
+    message: '서울 맛집 탐방 체험단에 선정되셨습니다!',
+    isRead: false,
+    actionUrl: '/checklist/1',
+    priority: 'high',
+    createdAt: '2025-02-20T10:00:00Z'
+  },
+  {
+    id: 2,
+    userId: 1,
+    type: 'point_earned',
+    title: '포인트 적립',
+    message: '일일 로그인으로 10P가 적립되었습니다.',
+    isRead: true,
+    actionUrl: '/points',
+    priority: 'medium',
+    createdAt: '2025-02-19T09:00:00Z'
+  },
+  {
+    id: 3,
+    userId: 1,
+    type: 'new_experience',
+    title: '신규 체험단',
+    message: '관심 카테고리에 새로운 체험단이 등록되었습니다.',
+    isRead: false,
+    actionUrl: '/checklist',
+    priority: 'medium',
+    createdAt: '2025-02-18T15:30:00Z'
+  }
+];
 
 export async function GET({ url, request }) {
-	try {
-		const user = await getUserFromRequest(request);
+  try {
+    // 더미 인증 체크
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader) {
+      return json({ error: '인증이 필요합니다.' }, { status: 401 });
+    }
 
-		if (!user) {
-			return json({ error: '인증이 필요합니다.' }, { status: 401 });
-		}
+    const isRead = url.searchParams.get('read');
+    const page = parseInt(url.searchParams.get('page') || '1');
+    const limit = parseInt(url.searchParams.get('limit') || '20');
 
-		const isRead = url.searchParams.get('read');
-		const page = parseInt(url.searchParams.get('page') || '1');
-		const limit = parseInt(url.searchParams.get('limit') || '20');
-		const offset = (page - 1) * limit;
+    let filteredNotifications = [...dummyNotifications];
 
-		const dataSource = await getDataSource();
-		const notificationRepository = dataSource.getRepository(Notification);
+    // 읽음 상태 필터
+    if (isRead === 'true') {
+      filteredNotifications = filteredNotifications.filter(n => n.isRead);
+    } else if (isRead === 'false') {
+      filteredNotifications = filteredNotifications.filter(n => !n.isRead);
+    }
 
-		// 쿼리 빌더 생성
-		let queryBuilder = notificationRepository
-			.createQueryBuilder('notification')
-			.where('notification.userId = :userId', { userId: user.id });
+    // 정렬 (최신순)
+    filteredNotifications.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-		// 읽음 상태 필터
-		if (isRead === 'true') {
-			queryBuilder.andWhere('notification.isRead = :isRead', { isRead: true });
-		} else if (isRead === 'false') {
-			queryBuilder.andWhere('notification.isRead = :isRead', { isRead: false });
-		}
+    // 페이징
+    const total = filteredNotifications.length;
+    const start = (page - 1) * limit;
+    const notifications = filteredNotifications.slice(start, start + limit);
 
-		// 정렬 및 페이징
-		queryBuilder
-			.orderBy('notification.createdAt', 'DESC')
-			.offset(offset)
-			.limit(limit);
+    // 읽지 않은 알림 수
+    const unreadCount = dummyNotifications.filter(n => !n.isRead).length;
 
-		const [notifications, total] = await queryBuilder.getManyAndCount();
+    return json({
+      notifications,
+      unreadCount,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
+    });
 
-		// 읽지 않은 알림 수
-		const unreadCount = await notificationRepository.count({
-			where: { userId: user.id, isRead: false }
-		});
-
-		return json({
-			notifications,
-			unreadCount,
-			pagination: {
-				page,
-				limit,
-				total,
-				totalPages: Math.ceil(total / limit)
-			}
-		});
-
-	} catch (error) {
-		console.error('알림 목록 조회 오류:', error);
-		return json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
-	}
+  } catch (error) {
+    console.error('알림 목록 조회 오류:', error);
+    return json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
+  }
 }
 
 export async function POST({ request }) {
-	try {
-		const user = await getUserFromRequest(request);
+  try {
+    // 더미 관리자 권한 체크
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader) {
+      return json({ error: '관리자 권한이 필요합니다.' }, { status: 403 });
+    }
 
-		if (!user || user.role !== UserRole.ADMIN) {
-			return json({ error: '관리자 권한이 필요합니다.' }, { status: 403 });
-		}
+    const { userId, type, title, message, actionUrl, priority } = await request.json();
 
-		const { userId, type, title, message, actionUrl, priority } = await request.json();
+    if (!userId || !type || !title || !message) {
+      return json({ error: '필수 정보를 모두 입력해주세요.' }, { status: 400 });
+    }
 
-		if (!userId || !type || !title || !message) {
-			return json({ error: '필수 정보를 모두 입력해주세요.' }, { status: 400 });
-		}
+    // 새 알림 생성 (더미)
+    const newNotification = {
+      id: Date.now(),
+      userId: parseInt(userId),
+      type,
+      title,
+      message,
+      actionUrl,
+      priority: priority || 'medium',
+      isRead: false,
+      createdAt: new Date().toISOString()
+    };
 
-		const dataSource = await getDataSource();
-		const notificationRepository = dataSource.getRepository(Notification);
-		const userRepository = dataSource.getRepository(User);
+    return json(newNotification, { status: 201 });
 
-		// 대상 사용자 확인
-		if (userId !== 'all') {
-			const targetUser = await userRepository.findOne({
-				where: { id: parseInt(userId), isActive: true }
-			});
-
-			if (!targetUser) {
-				return json({ error: '대상 사용자를 찾을 수 없습니다.' }, { status: 404 });
-			}
-		}
-
-		// 전체 사용자에게 알림 (userId가 'all'인 경우)
-		if (userId === 'all') {
-			const activeUsers = await userRepository.find({
-				where: { isActive: true },
-				select: ['id']
-			});
-
-			const notifications = activeUsers.map(u => 
-				notificationRepository.create({
-					userId: u.id,
-					type,
-					title,
-					message,
-					actionUrl,
-					priority: priority || NotificationPriority.MEDIUM
-				})
-			);
-
-			await notificationRepository.save(notifications);
-
-			return json({ 
-				message: `${activeUsers.length}명의 사용자에게 알림을 발송했습니다.`,
-				count: activeUsers.length
-			}, { status: 201 });
-		}
-
-		// 특정 사용자에게 알림
-		const notification = notificationRepository.create({
-			userId: parseInt(userId),
-			type,
-			title,
-			message,
-			actionUrl,
-			priority: priority || NotificationPriority.MEDIUM
-		});
-
-		const savedNotification = await notificationRepository.save(notification);
-
-		return json(savedNotification, { status: 201 });
-
-	} catch (error) {
-		console.error('알림 생성 오류:', error);
-		return json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
-	}
+  } catch (error) {
+    console.error('알림 생성 오류:', error);
+    return json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
+  }
 }

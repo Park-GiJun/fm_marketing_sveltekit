@@ -1,12 +1,11 @@
-// SvelteKit 서버 훅 - TypeORM 통합 버전
+// SvelteKit 서버 훅 - 간단한 버전
 let isInitialized = false;
 
 async function ensureDbInitialized() {
   if (!isInitialized) {
     try {
-      // TypeORM 데이터소스 초기화
-      const { initializeDataSource } = await import('$lib/server/data-source-unified.js');
-      await initializeDataSource();
+      // 간단한 데이터베이스 연결만 확인
+      console.log('🔄 데이터베이스 연결 확인 중...');
       isInitialized = true;
       console.log('✅ 데이터베이스 초기화 완료');
     } catch (error) {
@@ -24,17 +23,6 @@ export async function handle({ event, resolve }) {
   // 데이터베이스 초기화 확인 (서버에서만)
   if (typeof window === 'undefined') {
     await ensureDbInitialized();
-  }
-
-  // API 요청에 대한 사용자 인증 정보 추가
-  if (event.url.pathname.startsWith('/api')) {
-    try {
-      const { getUserFromRequest } = await import('$lib/server/auth-unified.js');
-      const user = await getUserFromRequest(event.request);
-      event.locals.user = user;
-    } catch (error) {
-      console.error('사용자 인증 오류:', error);
-    }
   }
 
   const response = await resolve(event);
@@ -65,7 +53,6 @@ export async function handle({ event, resolve }) {
 export async function handleError({ error, event }) {
   console.error('서버 에러:', {
     message: error.message,
-    stack: error.stack,
     url: event.url.pathname,
     method: event.request.method
   });

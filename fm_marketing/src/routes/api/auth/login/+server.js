@@ -1,8 +1,48 @@
-// 로그인 API - TypeORM 통합 버전
+// 로그인 API - 간단한 더미 데이터 버전
 import { json } from '@sveltejs/kit';
-import { getDataSource } from '$lib/server/data-source-unified.js';
-import { User, PointTransaction } from '$lib/server/entities/index.js';
-import { verifyPassword, generateToken } from '$lib/server/auth-unified.js';
+
+// 더미 사용자 데이터베이스
+const dummyUsers = [
+  { 
+    id: 1, 
+    username: 'admin', 
+    email: 'admin@fmmarketing.com', 
+    password: 'admin123!',
+    name: '관리자',
+    nickname: '관리자',
+    points: 50000,
+    level: 'platinum',
+    role: 'admin',
+    isActive: true,
+    isVerified: true
+  },
+  { 
+    id: 2, 
+    username: 'user1', 
+    email: 'user1@example.com', 
+    password: 'user123!',
+    name: '김철수',
+    nickname: '철수',
+    points: 5000,
+    level: 'bronze',
+    role: 'user',
+    isActive: true,
+    isVerified: true
+  },
+  { 
+    id: 3, 
+    username: 'user2', 
+    email: 'user2@example.com', 
+    password: 'user123!',
+    name: '이영희',
+    nickname: '영희',
+    points: 12000,
+    level: 'silver',
+    role: 'user',
+    isActive: true,
+    isVerified: true
+  }
+];
 
 export async function POST({ request }) {
   try {
@@ -13,70 +53,28 @@ export async function POST({ request }) {
       return json({ error: '사용자명과 비밀번호를 입력해주세요.' }, { status: 400 });
     }
 
-    const dataSource = await getDataSource();
-    const userRepository = dataSource.getRepository(User);
-    const pointRepository = dataSource.getRepository(PointTransaction);
-
     // 사용자 조회 (username 또는 email로 로그인 가능)
-    const user = await userRepository
-      .createQueryBuilder('user')
-      .where('(user.username = :username OR user.email = :username)', { username })
-      .andWhere('user.isActive = :isActive', { isActive: true })
-      .getOne();
+    const user = dummyUsers.find(u => 
+      (u.username === username || u.email === username) && u.isActive
+    );
 
     if (!user) {
       return json({ error: '존재하지 않는 사용자입니다.' }, { status: 401 });
     }
 
-    // 비밀번호 검증
-    const isValidPassword = await verifyPassword(password, user.passwordHash);
-    if (!isValidPassword) {
+    // 비밀번호 검증 (실제로는 해시 비교)
+    if (user.password !== password) {
       return json({ error: '비밀번호가 일치하지 않습니다.' }, { status: 401 });
     }
 
-    // 일일 로그인 포인트 지급 확인
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const todayLogin = await pointRepository
-      .createQueryBuilder('point')
-      .where('point.userId = :userId', { userId: user.id })
-      .andWhere('point.type = :type', { type: 'earn' })
-      .andWhere('point.referenceType = :refType', { refType: 'daily_login' })
-      .andWhere('DATE(point.createdAt) = CURDATE()')
-      .getOne();
+    // 일일 로그인 포인트 지급 (더미)
+    user.points += 10;
 
-    // 오늘 로그인 포인트가 없으면 지급
-    if (!todayLogin) {
-      await dataSource.transaction(async manager => {
-        // 포인트 거래 기록 생성
-        const pointTransaction = manager.create(PointTransaction, {
-          userId: user.id,
-          type: 'earn',
-          amount: 10,
-          description: '일일 로그인 포인트',
-          referenceType: 'daily_login'
-        });
-        await manager.save(pointTransaction);
-
-        // 사용자 포인트 업데이트
-        await manager.update(User, { id: user.id }, { 
-          points: () => 'points + 10' 
-        });
-      });
-
-      user.points += 10;
-    }
-
-    // JWT 토큰 생성
-    const token = await generateToken({ 
-      userId: user.id, 
-      username: user.username, 
-      email: user.email 
-    });
+    // 더미 JWT 토큰 생성
+    const token = `dummy-jwt-token-${user.id}-${Date.now()}`;
 
     // 사용자 정보 반환 (비밀번호 제외)
-    const { passwordHash, ...userInfo } = user;
+    const { password: _, ...userInfo } = user;
 
     return json({ user: userInfo, token });
 

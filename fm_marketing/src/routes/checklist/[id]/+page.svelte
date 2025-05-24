@@ -193,10 +193,12 @@
                   {#if review.images.length > 1}
                     <div class="slider-dots">
                       {#each review.images as _, index}
-                        <span 
+                        <button 
                           class="dot {currentImageIndex === index ? 'active' : ''}" 
                           on:click={() => currentImageIndex = index}
-                        ></span>
+                          aria-label="이미지 {index + 1}로 이동"
+                          type="button"
+                        ></button>
                       {/each}
                     </div>
                   {/if}
@@ -524,6 +526,9 @@
     border-radius: 50%;
     background-color: rgba(255, 255, 255, 0.5);
     cursor: pointer;
+    border: none;
+    padding: 0;
+    transition: background-color 0.2s;
   }
   
   .dot.active {

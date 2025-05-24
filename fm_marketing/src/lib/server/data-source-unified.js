@@ -53,10 +53,7 @@ export const AppDataSource = new DataSource({
   charset: 'utf8mb4',
   timezone: '+09:00', // 한국 시간대
   extra: {
-    charset: 'utf8mb4_unicode_ci',
-    connectionLimit: 10,
-    acquireTimeout: 60000,
-    timeout: 60000
+    charset: 'utf8mb4_unicode_ci'
   },
   ssl: false // SSL 비활성화
 });

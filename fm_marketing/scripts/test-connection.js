@@ -27,10 +27,7 @@ const testDataSource = new DataSource({
   charset: 'utf8mb4',
   timezone: '+09:00',
   extra: {
-    charset: 'utf8mb4_unicode_ci',
-    connectionLimit: 5,
-    acquireTimeout: 30000,
-    timeout: 30000
+    charset: 'utf8mb4_unicode_ci'
   },
   ssl: false
 });
@@ -44,10 +41,13 @@ async function testConnection() {
     console.log('✅ 데이터베이스 연결 성공!');
     
     // 간단한 쿼리 테스트
-    const result = await testDataSource.query('SELECT CURRENT_TIMESTAMP() AS current_time, DATABASE() AS db_name, VERSION() AS version');
-    console.log('📅 현재 시간:', result[0].current_time);
-    console.log('🗄️ 연결된 데이터베이스:', result[0].db_name);
-    console.log('📊 MySQL 버전:', result[0].version);
+    const timeResult = await testDataSource.query('SELECT NOW() AS current_time');
+    const dbResult = await testDataSource.query('SELECT DATABASE() AS db_name');
+    const versionResult = await testDataSource.query('SELECT VERSION() AS version');
+    
+    console.log('📅 현재 시간:', timeResult[0].current_time);
+    console.log('🗄️ 연결된 데이터베이스:', dbResult[0].db_name);
+    console.log('📊 MySQL 버전:', versionResult[0].version);
     
     // 테이블 목록 확인
     const tables = await testDataSource.query('SHOW TABLES');
