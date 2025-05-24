@@ -574,142 +574,141 @@ export async function createUser(userData) {
  * 체험단 조회 (간소화된 버전)
  */
 export async function findExperiences(filters = {}) {
-  try {
-    console.log('체험단 조회 필터:', filters);
-    
-    let sql = `
-      SELECT e.*, u.name as creator_name 
-      FROM experiences e 
-      LEFT JOIN users u ON e.created_by = u.id 
-      WHERE 1=1
-    `;
-    let params = [];
-    
-    // 상태 필터 추가
-    if (filters.status) {
-      sql += ' AND e.status = ?';
-      params.push(filters.status);
-    } else {
-      // 기본적으로 active 상태만 조회
-      sql += ' AND e.status = ?';
-      params.push('active');
-    }
-    
-    // 지역 필터
-    if (filters.region && filters.region !== '전체') {
-      sql += ' AND e.region = ?';
-      params.push(filters.region);
-    }
-    
-    // 카테고리 필터
-    if (filters.category && filters.category !== '카테고리') {
-      sql += ' AND e.category = ?';
-      params.push(filters.category);
-    }
-    
-    // 타입 필터
-    if (filters.type && filters.type !== '유형') {
-      sql += ' AND e.type = ?';
-      params.push(filters.type);
-    }
-    
-    // 검색 필터
-    if (filters.search) {
-      sql += ' AND (e.title LIKE ? OR e.content LIKE ?)';
-      params.push(`%${filters.search}%`, `%${filters.search}%`);
-    }
-    
-    // 정렬
-    if (filters.sort === 'popular') {
-      sql += ' ORDER BY (e.views + e.likes) DESC';
-    } else if (filters.sort === 'deadline') {
-      sql += ' ORDER BY e.application_deadline ASC';
-    } else {
-      sql += ' ORDER BY e.created_at DESC';
-    }
-    
-    // 페이징 - 간단하게 처리, 숫자로 확실히 변환
-    if (filters.limit) {
-      const limitNum = parseInt(filters.limit);
-      if (!isNaN(limitNum) && limitNum > 0) {
-        sql += ' LIMIT ?';
-        params.push(limitNum);
-      }
-    }
-    
-    console.log('최종 SQL:', sql);
-    console.log('최종 파라미터:', params);
-    
-    const experiences = await executeQuery(sql, params);
-    
-    // JSON 필드 파싱
-    return experiences.map(exp => ({
-      ...exp,
-      images: exp.images ? JSON.parse(exp.images) : [],
-      tags: exp.tags ? JSON.parse(exp.tags) : [],
-      creatorName: exp.creator_name,
-      daysAgo: exp.application_deadline ? Math.ceil((new Date(exp.application_deadline) - new Date()) / (1000 * 60 * 60 * 24)) : null
-    }));
-  } catch (error) {
-    console.error('체험단 조회 오류:', error);
-    throw error;
-  }
+	try {
+		console.log('체험단 조회 필터:', filters);
+
+		let sql = `
+			SELECT e.*, u.name as creator_name
+			FROM experiences e
+						 LEFT JOIN users u ON e.created_by = u.id
+			WHERE 1=1
+		`;
+		let params = [];
+
+		// 상태 필터
+		if (filters.status) {
+			sql += ' AND e.status = ?';
+			params.push(filters.status);
+		} else {
+			sql += ' AND e.status = ?';
+			params.push('active');
+		}
+
+		if (filters.region && filters.region !== '전체') {
+			sql += ' AND e.region = ?';
+			params.push(filters.region);
+		}
+
+		if (filters.category && filters.category !== '카테고리') {
+			sql += ' AND e.category = ?';
+			params.push(filters.category);
+		}
+
+		if (filters.type && filters.type !== '유형') {
+			sql += ' AND e.type = ?';
+			params.push(filters.type);
+		}
+
+		if (filters.search) {
+			sql += ' AND (e.title LIKE ? OR e.content LIKE ?)';
+			const keyword = `%${filters.search}%`;
+			params.push(keyword);
+			params.push(keyword);
+		}
+
+		// 정렬
+		if (filters.sort === 'popular') {
+			sql += ' ORDER BY (e.views + e.likes) DESC';
+		} else if (filters.sort === 'deadline') {
+			sql += ' ORDER BY e.application_deadline ASC';
+		} else {
+			sql += ' ORDER BY e.created_at DESC';
+		}
+
+		// ❗ LIMIT 직접 문자열로 삽입
+		if (filters.limit) {
+			const limitNum = parseInt(filters.limit);
+			if (!isNaN(limitNum) && limitNum > 0) {
+				sql += ` LIMIT ${limitNum}`; // 직접 문자열 삽입
+			}
+		}
+
+		console.log('최종 SQL:', sql);
+		console.log('최종 파라미터:', params);
+
+		const experiences = await executeQuery(sql, params);
+
+		return experiences.map(exp => ({
+			...exp,
+			images: exp.images ? JSON.parse(exp.images) : [],
+			tags: exp.tags ? JSON.parse(exp.tags) : [],
+			creatorName: exp.creator_name,
+			daysAgo: exp.application_deadline
+				? Math.ceil((new Date(exp.application_deadline) - new Date()) / (1000 * 60 * 60 * 24))
+				: null
+		}));
+	} catch (error) {
+		console.error('체험단 조회 오류:', error);
+		throw error;
+	}
 }
+
+
 
 /**
  * 커뮤니티 게시글 조회 (간소화된 버전)
  */
 export async function findCommunityPosts(filters = {}) {
-  try {
-    let sql = `
-      SELECT p.*, u.nickname, u.profile_image
-      FROM community_posts p 
-      LEFT JOIN users u ON p.author_id = u.id 
-      WHERE p.is_deleted = 0
-    `;
-    let params = [];
-    
-    if (filters.category && filters.category !== '전체') {
-      sql += ' AND p.category = ?';
-      params.push(filters.category);
-    }
-    
-    if (filters.search) {
-      sql += ' AND (p.title LIKE ? OR p.content LIKE ?)';
-      params.push(`%${filters.search}%`, `%${filters.search}%`);
-    }
-    
-    // 정렬
-    if (filters.sort === 'popular') {
-      sql += ' ORDER BY (p.views + p.likes) DESC';
-    } else {
-      sql += ' ORDER BY p.created_at DESC';
-    }
-    
-    // 페이징 - 간단하게 처리, 숫자로 확실히 변환
-    if (filters.limit) {
-      const limitNum = parseInt(filters.limit);
-      if (!isNaN(limitNum) && limitNum > 0) {
-        sql += ' LIMIT ?';
-        params.push(limitNum);
-      }
-    }
-    
-    const posts = await executeQuery(sql, params);
-    
-    return posts.map(post => ({
-      ...post,
-      images: post.images ? JSON.parse(post.images) : [],
-      tags: post.tags ? JSON.parse(post.tags) : [],
-      commentCount: 0, // 일단 0으로 설정
-      author: {
-        id: post.author_id,
-        nickname: post.nickname || '익명',
-        profileImage: post.profile_image || '/images/default-avatar.jpg'
-      }
-    }));
-  } catch (error) {
-    console.error('커뮤니티 게시글 조회 오류:', error);
-    throw error;
-  }
+	try {
+		let sql = `
+			SELECT p.*, u.nickname, u.profile_image
+			FROM community_posts p
+						 LEFT JOIN users u ON p.author_id = u.id
+			WHERE p.is_deleted = 0
+		`;
+		let params = [];
+
+		if (filters.category && filters.category !== '전체') {
+			sql += ' AND p.category = ?';
+			params.push(filters.category);
+		}
+
+		if (filters.search) {
+			sql += ' AND (p.title LIKE ? OR p.content LIKE ?)';
+			const keyword = `%${filters.search}%`;
+			params.push(keyword);
+			params.push(keyword);
+		}
+
+		if (filters.sort === 'popular') {
+			sql += ' ORDER BY (p.views + p.likes) DESC';
+		} else {
+			sql += ' ORDER BY p.created_at DESC';
+		}
+
+		// ❗ LIMIT 직접 문자열로 삽입
+		if (filters.limit) {
+			const limitNum = parseInt(filters.limit);
+			if (!isNaN(limitNum) && limitNum > 0) {
+				sql += ` LIMIT ${limitNum}`; // 숫자 직접 삽입
+			}
+		}
+
+		const posts = await executeQuery(sql, params);
+
+		return posts.map(post => ({
+			...post,
+			images: post.images ? JSON.parse(post.images) : [],
+			tags: post.tags ? JSON.parse(post.tags) : [],
+			commentCount: 0,
+			author: {
+				id: post.author_id,
+				nickname: post.nickname || '익명',
+				profileImage: post.profile_image || '/images/default-avatar.jpg'
+			}
+		}));
+	} catch (error) {
+		console.error('커뮤니티 게시글 조회 오류:', error);
+		throw error;
+	}
 }

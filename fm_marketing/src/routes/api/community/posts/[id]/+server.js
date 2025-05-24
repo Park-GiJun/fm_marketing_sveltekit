@@ -1,6 +1,6 @@
 // 커뮤니티 게시글 상세 조회/수정/삭제 API
 import { json } from '@sveltejs/kit';
-import { getDataSource } from '$lib/server/data-source.js';
+import { findExperiences, executeQuery } from '$lib/server/database.js';
 import { CommunityPost } from '$lib/server/entities/CommunityPost.js';
 import { Comment } from '$lib/server/entities/Comment.js';
 import { User, UserRole } from '$lib/server/entities/User.js';
