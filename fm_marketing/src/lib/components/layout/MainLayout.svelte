@@ -3,6 +3,8 @@
 <script>
 	import Header from '$lib/components/common/Header.svelte';
 	import Footer from '$lib/components/common/Footer.svelte';
+	import ToastContainer from '$lib/components/common/ToastContainer.svelte';
+	import ServiceWorkerManager from '$lib/components/common/ServiceWorkerManager.svelte';
 	// import RegionTab from '$lib/components/layout/RegionTab.svelte';
 
 	// 현재 선택된 지역 (기본값: 전체)
@@ -24,6 +26,12 @@
 	</main>
 
 	<Footer />
+	
+	<!-- 토스트 알림 -->
+	<ToastContainer />
+	
+	<!-- 서비스 워커 관리 -->
+	<ServiceWorkerManager />
 </div>
 
 <style>

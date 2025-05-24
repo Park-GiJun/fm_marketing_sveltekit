@@ -80,7 +80,7 @@ function createNotificationStore() {
 		}
 	];
 
-	return {
+	const store = {
 		subscribe,
 
 		// 초기 알림 로드
@@ -219,9 +219,11 @@ function createNotificationStore() {
 			];
 
 			const randomNotification = notifications[Math.floor(Math.random() * notifications.length)];
-			return createNotificationStore().addNotification(randomNotification);
+			return store.addNotification(randomNotification);
 		}
 	};
+
+	return store;
 }
 
 export const notificationStore = createNotificationStore();

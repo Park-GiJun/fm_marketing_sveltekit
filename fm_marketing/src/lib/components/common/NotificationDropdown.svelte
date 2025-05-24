@@ -2,7 +2,6 @@
 <script>
 	import { onMount } from 'svelte';
 	import { notificationStore, notificationIcons } from '$lib/stores/notificationStore.js';
-	import { formatRelativeTime } from '$lib/utils/date.js';
 	import Badge from './Badge.svelte';
 	import Button from './Button.svelte';
 
@@ -14,12 +13,8 @@
 	let unreadCount = 0;
 
 	// 스토어 구독
-	$: {
-		const unsubscribe = notificationStore.subscribe(state => {
-			notifications = state.notifications;
-			unreadCount = state.unreadCount;
-		});
-	}
+	$: notifications = $notificationStore.notifications;
+	$: unreadCount = $notificationStore.unreadCount;
 
 	// 드롭다운 토글
 	function toggleDropdown() {
@@ -58,8 +53,8 @@
 		}
 	}
 
-	// 상대시간 포맷팅
-	function getRelativeTime(timestamp) {
+	// 상대시간 포맷팅 (로컬 함수)
+	function formatRelativeTime(timestamp) {
 		const date = new Date(timestamp);
 		const now = new Date();
 		const diffMs = now - date;
@@ -111,7 +106,7 @@
 		
 		{#if unreadCount > 0}
 			<div class="notification-badge">
-				<Badge type="danger" size="sm">
+				<Badge type="warning" size="sm">
 					{unreadCount > 99 ? '99+' : unreadCount}
 				</Badge>
 			</div>
@@ -162,7 +157,7 @@
 							<div class="notification-content">
 								<h4 class="notification-item-title">{notification.title}</h4>
 								<p class="notification-message">{notification.message}</p>
-								<span class="notification-time">{getRelativeTime(notification.timestamp)}</span>
+								<span class="notification-time">{formatRelativeTime(notification.timestamp)}</span>
 							</div>
 							
 							{#if !notification.read}

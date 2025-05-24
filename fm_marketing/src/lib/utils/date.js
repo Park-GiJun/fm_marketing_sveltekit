@@ -9,14 +9,14 @@
  */
 export function formatKoreanDate(date) {
 	if (!date) return '';
-	
+
 	const d = new Date(date);
 	if (isNaN(d.getTime())) return '';
-	
+
 	const year = d.getFullYear();
 	const month = String(d.getMonth() + 1).padStart(2, '0');
 	const day = String(d.getDate()).padStart(2, '0');
-	
+
 	return `${year}.${month}.${day}`;
 }
 
@@ -25,14 +25,14 @@ export function formatKoreanDate(date) {
  */
 export function formatKoreanDateTime(date) {
 	if (!date) return '';
-	
+
 	const d = new Date(date);
 	if (isNaN(d.getTime())) return '';
-	
+
 	const datePart = formatKoreanDate(d);
 	const hours = String(d.getHours()).padStart(2, '0');
 	const minutes = String(d.getMinutes()).padStart(2, '0');
-	
+
 	return `${datePart} ${hours}:${minutes}`;
 }
 
@@ -41,10 +41,10 @@ export function formatKoreanDateTime(date) {
  */
 export function getRelativeTime(date) {
 	if (!date) return '';
-	
+
 	const d = new Date(date);
 	if (isNaN(d.getTime())) return '';
-	
+
 	const now = new Date();
 	const diffMs = now.getTime() - d.getTime();
 	const diffSecs = Math.floor(diffMs / 1000);
@@ -54,7 +54,7 @@ export function getRelativeTime(date) {
 	const diffWeeks = Math.floor(diffDays / 7);
 	const diffMonths = Math.floor(diffDays / 30);
 	const diffYears = Math.floor(diffDays / 365);
-	
+
 	if (diffSecs < 30) {
 		return '방금 전';
 	} else if (diffSecs < 60) {
@@ -79,17 +79,17 @@ export function getRelativeTime(date) {
  */
 export function getDDay(targetDate) {
 	if (!targetDate) return null;
-	
+
 	const target = new Date(targetDate);
 	if (isNaN(target.getTime())) return null;
-	
+
 	const today = new Date();
 	const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 	const targetStart = new Date(target.getFullYear(), target.getMonth(), target.getDate());
-	
+
 	const diffMs = targetStart.getTime() - todayStart.getTime();
 	const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-	
+
 	return diffDays;
 }
 
@@ -98,9 +98,9 @@ export function getDDay(targetDate) {
  */
 export function formatDDay(targetDate) {
 	const dDay = getDDay(targetDate);
-	
+
 	if (dDay === null) return '';
-	
+
 	if (dDay > 0) {
 		return `D-${dDay}`;
 	} else if (dDay < 0) {
@@ -116,11 +116,11 @@ export function formatDDay(targetDate) {
 export function formatDateRange(startDate, endDate, separator = ' ~ ') {
 	const start = formatKoreanDate(startDate);
 	const end = formatKoreanDate(endDate);
-	
+
 	if (!start && !end) return '';
 	if (!start) return end;
 	if (!end) return start;
-	
+
 	return `${start}${separator}${end}`;
 }
 
@@ -129,14 +129,14 @@ export function formatDateRange(startDate, endDate, separator = ' ~ ') {
  */
 export function isDateInRange(date, startDate, endDate) {
 	if (!date) return false;
-	
+
 	const d = new Date(date);
 	const start = startDate ? new Date(startDate) : null;
 	const end = endDate ? new Date(endDate) : null;
-	
+
 	if (start && d < start) return false;
 	if (end && d > end) return false;
-	
+
 	return true;
 }
 
@@ -145,10 +145,10 @@ export function isDateInRange(date, startDate, endDate) {
  */
 export function isToday(date) {
 	if (!date) return false;
-	
+
 	const d = new Date(date);
 	const today = new Date();
-	
+
 	return d.getFullYear() === today.getFullYear() &&
 		   d.getMonth() === today.getMonth() &&
 		   d.getDate() === today.getDate();
@@ -159,11 +159,11 @@ export function isToday(date) {
  */
 export function isYesterday(date) {
 	if (!date) return false;
-	
+
 	const d = new Date(date);
 	const yesterday = new Date();
 	yesterday.setDate(yesterday.getDate() - 1);
-	
+
 	return d.getFullYear() === yesterday.getFullYear() &&
 		   d.getMonth() === yesterday.getMonth() &&
 		   d.getDate() === yesterday.getDate();
@@ -174,20 +174,20 @@ export function isYesterday(date) {
  */
 export function isThisWeek(date) {
 	if (!date) return false;
-	
+
 	const d = new Date(date);
 	const today = new Date();
-	
+
 	// 이번 주 시작일 (월요일)
 	const startOfWeek = new Date(today);
 	startOfWeek.setDate(today.getDate() - today.getDay() + 1);
 	startOfWeek.setHours(0, 0, 0, 0);
-	
+
 	// 이번 주 종료일 (일요일)
 	const endOfWeek = new Date(startOfWeek);
 	endOfWeek.setDate(startOfWeek.getDate() + 6);
 	endOfWeek.setHours(23, 59, 59, 999);
-	
+
 	return d >= startOfWeek && d <= endOfWeek;
 }
 
@@ -196,17 +196,17 @@ export function isThisWeek(date) {
  */
 export function calculateAge(birthDate) {
 	if (!birthDate) return null;
-	
+
 	const birth = new Date(birthDate);
 	const today = new Date();
-	
+
 	let age = today.getFullYear() - birth.getFullYear();
 	const monthDiff = today.getMonth() - birth.getMonth();
-	
+
 	if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
 		age--;
 	}
-	
+
 	return age;
 }
 
@@ -258,10 +258,10 @@ export function isValidDate(date) {
  */
 export function toKoreanTime(isoString) {
 	if (!isoString) return null;
-	
+
 	const date = new Date(isoString);
 	if (isNaN(date.getTime())) return null;
-	
+
 	// UTC+9 (한국 시간)
 	const koreanTime = new Date(date.getTime() + (9 * 60 * 60 * 1000));
 	return koreanTime;
@@ -272,13 +272,13 @@ export function toKoreanTime(isoString) {
  */
 export function formatTime(date) {
 	if (!date) return '';
-	
+
 	const d = new Date(date);
 	if (isNaN(d.getTime())) return '';
-	
+
 	const hours = String(d.getHours()).padStart(2, '0');
 	const minutes = String(d.getMinutes()).padStart(2, '0');
-	
+
 	return `${hours}:${minutes}`;
 }
 
@@ -287,14 +287,14 @@ export function formatTime(date) {
  */
 export function getDayName(date, short = false) {
 	if (!date) return '';
-	
+
 	const d = new Date(date);
 	if (isNaN(d.getTime())) return '';
-	
-	const days = short 
+
+	const days = short
 		? ['일', '월', '화', '수', '목', '금', '토']
 		: ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
-	
+
 	return days[d.getDay()];
 }
 
@@ -303,14 +303,14 @@ export function getDayName(date, short = false) {
  */
 export function getMonthName(date, short = false) {
 	if (!date) return '';
-	
+
 	const d = new Date(date);
 	if (isNaN(d.getTime())) return '';
-	
-	const months = short 
+
+	const months = short
 		? ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월']
 		: ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
-	
+
 	return months[d.getMonth()];
 }
 
@@ -319,14 +319,19 @@ export function getMonthName(date, short = false) {
  */
 export function getDaysDifference(date1, date2) {
 	if (!date1 || !date2) return null;
-	
+
 	const d1 = new Date(date1);
 	const d2 = new Date(date2);
-	
+
 	if (isNaN(d1.getTime()) || isNaN(d2.getTime())) return null;
-	
+
 	const diffTime = Math.abs(d2.getTime() - d1.getTime());
 	const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-	
+
 	return diffDays;
 }
+
+/**
+ * 상대적 시간 표시 (별칭 - formatRelativeTime과 동일)
+ */
+export const formatRelativeTime = getRelativeTime;
