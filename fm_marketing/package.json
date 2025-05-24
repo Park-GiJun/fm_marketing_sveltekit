@@ -12,7 +12,8 @@
     "migration:generate": "npm run typeorm -- migration:generate",
     "migration:run": "npm run typeorm -- migration:run",
     "migration:revert": "npm run typeorm -- migration:revert",
-    "db:seed": "node --loader ts-node/esm src/lib/server/seed.ts"
+    "db:seed": "node --loader ts-node/esm src/lib/server/seed.ts",
+    "db:init": "npm run migration:run && npm run db:seed"
   },
   "devDependencies": {
     "@sveltejs/adapter-auto": "^3.0.0",

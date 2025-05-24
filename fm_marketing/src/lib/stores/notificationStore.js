@@ -1,5 +1,6 @@
 // src/lib/stores/notificationStore.js
 import { writable, derived } from 'svelte/store';
+import { apiClient } from '$lib/utils/api.js';
 
 function createNotificationStore() {
 	const { subscribe, update } = writable({
@@ -16,153 +17,147 @@ function createNotificationStore() {
 		}
 	});
 
-	// 더미 알림 데이터
-	const dummyNotifications = [
-		{
-			id: 'notif-1',
-			type: 'application_result',
-			title: '체험단 선정 결과',
-			message: '서울 맛집 체험단에 선정되셨습니다! 축하드립니다.',
-			timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString(), // 30분 전
-			read: false,
-			actionUrl: '/checklist/dummy-1',
-			priority: 'high',
-			icon: 'check-circle',
-			category: 'application'
-		},
-		{
-			id: 'notif-2',
-			type: 'experience_reminder',
-			title: '체험 기간 알림',
-			message: '뷰티 제품 체험단 활동 마감이 3일 남았습니다.',
-			timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), // 2시간 전
-			read: false,
-			actionUrl: '/checklist/dummy-2',
-			priority: 'medium',
-			icon: 'clock',
-			category: 'reminder'
-		},
-		{
-			id: 'notif-3',
-			type: 'community_reply',
-			title: '댓글 알림',
-			message: '작성하신 게시글에 새로운 댓글이 달렸습니다.',
-			timestamp: new Date(Date.now() - 1000 * 60 * 60 * 4).toISOString(), // 4시간 전
-			read: true,
-			actionUrl: '/community/1',
-			priority: 'low',
-			icon: 'message-circle',
-			category: 'community'
-		},
-		{
-			id: 'notif-4',
-			type: 'point_earned',
-			title: '포인트 적립',
-			message: '체험단 활동 완료로 5,000P가 적립되었습니다.',
-			timestamp: new Date(Date.now() - 1000 * 60 * 60 * 6).toISOString(), // 6시간 전
-			read: true,
-			actionUrl: '/mypage',
-			priority: 'medium',
-			icon: 'star',
-			category: 'point'
-		},
-		{
-			id: 'notif-5',
-			type: 'system_notice',
-			title: '시스템 공지',
-			message: '서비스 점검이 완료되었습니다.',
-			timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(), // 1일 전
-			read: true,
-			actionUrl: '/event',
-			priority: 'low',
-			icon: 'info',
-			category: 'system'
-		}
-	];
-
 	const store = {
 		subscribe,
 
 		// 초기 알림 로드
-		initialize: () => {
-			update(state => ({
-				...state,
-				notifications: dummyNotifications,
-				unreadCount: dummyNotifications.filter(n => !n.read).length
-			}));
+		initialize: async () => {
+			try {
+				const response = await apiClient.get('/notifications');
+				update(state => ({
+					...state,
+					notifications: response.data.notifications || [],
+					unreadCount: response.data.unreadCount || 0
+				}));
+			} catch (error) {
+				console.error('알림 초기화 오류:', error);
+			}
 		},
 
-		// 새 알림 추가
+		// 알림 목록 새로고침
+		fetchNotifications: async (isRead = null) => {
+			try {
+				const params = {};
+				if (isRead !== null) {
+					params.read = isRead;
+				}
+
+				const response = await apiClient.get('/notifications', params);
+				update(state => ({
+					...state,
+					notifications: response.data.notifications || [],
+					unreadCount: response.data.unreadCount || 0
+				}));
+			} catch (error) {
+				console.error('알림 목록 조회 오류:', error);
+			}
+		},
+
+		// 새 알림 추가 (시스템에서 호출)
 		addNotification: (notification) => {
-			const newNotification = {
-				id: `notif-${Date.now()}`,
-				timestamp: new Date().toISOString(),
-				read: false,
-				priority: 'medium',
-				...notification
-			};
+			update(state => {
+				const newNotification = {
+					id: `notif-${Date.now()}`,
+					timestamp: new Date().toISOString(),
+					isRead: false,
+					priority: 'medium',
+					...notification
+				};
 
-			update(state => ({
-				...state,
-				notifications: [newNotification, ...state.notifications],
-				unreadCount: state.unreadCount + 1
-			}));
-
-			return newNotification.id;
+				return {
+					...state,
+					notifications: [newNotification, ...state.notifications],
+					unreadCount: state.unreadCount + 1
+				};
+			});
 		},
 
 		// 알림 읽음 처리
-		markAsRead: (notificationId) => {
-			update(state => {
-				const notifications = state.notifications.map(notification => 
-					notification.id === notificationId 
-						? { ...notification, read: true }
-						: notification
-				);
+		markAsRead: async (notificationId) => {
+			try {
+				await apiClient.patch(`/notifications/${notificationId}`, { isRead: true });
 				
-				const unreadCount = notifications.filter(n => !n.read).length;
+				update(state => {
+					const notifications = state.notifications.map(notification => 
+						notification.id === notificationId 
+							? { ...notification, isRead: true }
+							: notification
+					);
+					
+					const unreadCount = notifications.filter(n => !n.isRead).length;
 
-				return {
-					...state,
-					notifications,
-					unreadCount
-				};
-			});
+					return {
+						...state,
+						notifications,
+						unreadCount
+					};
+				});
+			} catch (error) {
+				console.error('알림 읽음 처리 오류:', error);
+			}
 		},
 
 		// 모든 알림 읽음 처리
-		markAllAsRead: () => {
-			update(state => ({
-				...state,
-				notifications: state.notifications.map(n => ({ ...n, read: true })),
-				unreadCount: 0
-			}));
+		markAllAsRead: async () => {
+			try {
+				await apiClient.post('/notifications/mark-all-read');
+				
+				update(state => ({
+					...state,
+					notifications: state.notifications.map(n => ({ ...n, isRead: true })),
+					unreadCount: 0
+				}));
+			} catch (error) {
+				console.error('모든 알림 읽음 처리 오류:', error);
+			}
 		},
 
 		// 알림 삭제
-		removeNotification: (notificationId) => {
-			update(state => {
-				const notifications = state.notifications.filter(n => n.id !== notificationId);
-				const unreadCount = notifications.filter(n => !n.read).length;
+		removeNotification: async (notificationId) => {
+			try {
+				await apiClient.delete(`/notifications/${notificationId}`);
+				
+				update(state => {
+					const notifications = state.notifications.filter(n => n.id !== notificationId);
+					const unreadCount = notifications.filter(n => !n.isRead).length;
 
-				return {
-					...state,
-					notifications,
-					unreadCount
-				};
-			});
+					return {
+						...state,
+						notifications,
+						unreadCount
+					};
+				});
+			} catch (error) {
+				console.error('알림 삭제 오류:', error);
+			}
 		},
 
 		// 모든 알림 삭제
-		clearAll: () => {
-			update(state => ({
-				...state,
-				notifications: [],
-				unreadCount: 0
-			}));
+		clearAll: async () => {
+			try {
+				// 각 알림을 개별 삭제 (일괄 삭제 API 구현 시 변경)
+				const currentState = await new Promise(resolve => {
+					const unsubscribe = subscribe(state => {
+						resolve(state);
+						unsubscribe();
+					});
+				});
+
+				for (const notification of currentState.notifications) {
+					await apiClient.delete(`/notifications/${notification.id}`);
+				}
+
+				update(state => ({
+					...state,
+					notifications: [],
+					unreadCount: 0
+				}));
+			} catch (error) {
+				console.error('모든 알림 삭제 오류:', error);
+			}
 		},
 
-		// 알림 설정 업데이트
+		// 알림 설정 업데이트 (로컬 저장)
 		updateSettings: (newSettings) => {
 			update(state => ({
 				...state,

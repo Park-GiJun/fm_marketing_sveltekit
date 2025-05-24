@@ -1,186 +1,180 @@
-# FM Marketing - 체험단 마케팅 플랫폼
+# FM마케팅 플랫폼
 
-SvelteKit과 TypeORM을 사용한 체험단 마케팅 플랫폼입니다.
+SvelteKit + TypeORM + MySQL을 사용한 체험단 마케팅 플랫폼입니다.
 
 ## 기술 스택
 
-- **Frontend**: SvelteKit, Svelte 4
-- **Backend**: SvelteKit API Routes
-- **Database**: MySQL + TypeORM
+- **Frontend**: SvelteKit, JavaScript
+- **Backend**: Node.js, TypeORM
+- **Database**: MySQL
 - **Authentication**: JWT
-- **Styling**: Tailwind CSS (custom)
-
-## 설치 및 실행
-
-### 1. 의존성 설치
-
-```bash
-npm install
-```
-
-### 2. 환경변수 설정
-
-`.env` 파일을 생성하고 데이터베이스 정보를 입력하세요:
-
-```env
-# 데이터베이스 설정
-DB_TYPE=mysql
-DB_HOST=localhost
-DB_PORT=3306
-DB_USERNAME=root
-DB_PASSWORD=your_password
-DB_DATABASE=fm_marketing
-
-# JWT 설정
-JWT_SECRET=your-super-secret-jwt-key
-
-# 개발 환경 설정
-NODE_ENV=development
-```
-
-### 3. 데이터베이스 설정
-
-MySQL 데이터베이스를 생성하세요:
-
-```sql
-CREATE DATABASE fm_marketing CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-```
-
-### 4. 개발 서버 실행
-
-```bash
-npm run dev
-```
-
-앱이 시작되면서 자동으로 데이터베이스 스키마가 생성되고 시드 데이터가 삽입됩니다.
-
-## 기본 계정 정보
-
-### 관리자 계정
-- 사용자명: `admin`
-- 비밀번호: `admin123!`
-
-### 테스트 사용자 계정
-- 사용자명: `user1` / 비밀번호: `user123!`
-- 사용자명: `user2` / 비밀번호: `user123!`
-- 사용자명: `user3` / 비밀번호: `user123!`
+- **Styling**: Tailwind CSS (일부), 커스텀 CSS
 
 ## 주요 기능
 
 ### 사용자 기능
 - 회원가입/로그인
 - 체험단 검색 및 신청
-- 포인트 시스템
-- 커뮤니티 게시판
+- 커뮤니티 게시글 작성/댓글
+- 포인트 적립 및 환급
 - 알림 시스템
-- 마이페이지
+- 이벤트/공지사항 확인
 
 ### 관리자 기능
-- 체험단 관리
+- 체험단 관리 (CRUD)
 - 사용자 관리
+- 커뮤니티 관리
 - 이벤트/공지사항 관리
-- 통계 대시보드
+- 가이드/FAQ 관리
+
+## 설치 및 실행
+
+### 1. 프로젝트 클론
+```bash
+git clone <repository-url>
+cd fm-marketing
+```
+
+### 2. 의존성 설치
+```bash
+npm install
+```
+
+### 3. 환경변수 설정
+`.env.example`을 참고하여 `.env` 파일을 생성하고 설정값을 입력합니다.
+
+```bash
+cp .env.example .env
+```
+
+### 4. 데이터베이스 설정
+MySQL 데이터베이스를 생성하고 연결 정보를 `.env`에 설정합니다.
+
+```sql
+CREATE DATABASE fm_marketing CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+```
+
+### 5. 데이터베이스 초기화
+```bash
+npm run db:init
+```
+
+### 6. 개발 서버 실행
+```bash
+npm run dev
+```
+
+서버가 실행되면 `http://localhost:5173`에서 접속할 수 있습니다.
 
 ## API 엔드포인트
 
 ### 인증
 - `POST /api/auth/login` - 로그인
 - `POST /api/auth/register` - 회원가입
+- `GET /api/auth/profile` - 프로필 조회
 
 ### 체험단
-- `GET /api/experiences` - 체험단 목록 조회
-- `POST /api/experiences` - 체험단 생성 (관리자)
-- `GET /api/experiences/[id]` - 체험단 상세 조회
-- `PUT /api/experiences/[id]` - 체험단 수정 (관리자)
-- `DELETE /api/experiences/[id]` - 체험단 삭제 (관리자)
-- `POST /api/experiences/[id]/apply` - 체험단 신청
-- `DELETE /api/experiences/[id]/apply` - 체험단 신청 취소
+- `GET /api/experiences` - 체험단 목록
+- `GET /api/experiences/{id}` - 체험단 상세
+- `POST /api/experiences/{id}/apply` - 체험단 신청
+- `DELETE /api/experiences/{id}/apply` - 체험단 신청 취소
 
-## 데이터베이스 스키마
+### 커뮤니티
+- `GET /api/community/posts` - 게시글 목록
+- `POST /api/community/posts` - 게시글 작성
+- `GET /api/community/posts/{id}` - 게시글 상세
+- `GET /api/community/posts/{id}/comments` - 댓글 목록
+- `POST /api/community/posts/{id}/comments` - 댓글 작성
 
-### 주요 테이블
-- `users` - 사용자 정보
-- `experiences` - 체험단 정보
-- `experience_applications` - 체험단 신청 내역
-- `community_posts` - 커뮤니티 게시글
-- `comments` - 댓글
-- `point_transactions` - 포인트 거래 내역
-- `notifications` - 알림
-- `events` - 이벤트/공지사항
-- `guides` - 이용 가이드
-- `faqs` - 자주 묻는 질문
+### 알림
+- `GET /api/notifications` - 알림 목록
+- `PATCH /api/notifications/{id}` - 알림 읽음 처리
+- `POST /api/notifications/mark-all-read` - 모든 알림 읽음 처리
 
-## 개발 명령어
+### 이벤트/공지사항
+- `GET /api/events` - 이벤트/공지사항 목록
+- `GET /api/events/{id}` - 이벤트/공지사항 상세
 
-```bash
-# 개발 서버 실행
-npm run dev
+### 가이드/FAQ
+- `GET /api/guides` - 가이드 목록
+- `GET /api/guides/{id}` - 가이드 상세
+- `GET /api/faqs` - FAQ 목록
 
-# 프로덕션 빌드
-npm run build
+### 포인트
+- `GET /api/points` - 포인트 내역
+- `POST /api/points/withdrawal` - 포인트 환급 신청
 
-# 빌드된 앱 미리보기
-npm run preview
+## 테스트 계정
 
-# 타입 체크
-npm run check
+시드 데이터로 생성되는 테스트 계정:
 
-# 마이그레이션 생성
-npm run migration:generate -- -n MigrationName
+### 관리자
+- ID: `admin`
+- PW: `admin123!`
 
-# 마이그레이션 실행
-npm run migration:run
-
-# 마이그레이션 되돌리기
-npm run migration:revert
-
-# 시드 데이터 실행
-npm run db:seed
-```
+### 일반 사용자
+- ID: `user1` / PW: `user123!`
+- ID: `user2` / PW: `user123!`
+- ID: `user3` / PW: `user123!`
 
 ## 프로젝트 구조
 
 ```
 src/
 ├── lib/
-│   ├── components/          # Svelte 컴포넌트
-│   │   ├── common/         # 공통 컴포넌트
-│   │   ├── layout/         # 레이아웃 컴포넌트
-│   │   └── review/         # 체험단 관련 컴포넌트
-│   ├── server/             # 서버사이드 코드
-│   │   ├── entities/       # TypeORM 엔티티
-│   │   ├── migrations/     # 데이터베이스 마이그레이션
-│   │   ├── auth.js        # 인증 유틸리티
-│   │   ├── data-source.js # 데이터베이스 연결
-│   │   └── seed.js        # 시드 데이터
-│   ├── stores/             # Svelte 스토어
-│   ├── styles/             # 스타일시트
-│   └── utils/              # 유틸리티 함수
-├── routes/                 # SvelteKit 라우트
-│   ├── api/               # API 엔드포인트
-│   ├── admin/             # 관리자 페이지
-│   ├── checklist/         # 체험단 목록/상세
-│   ├── community/         # 커뮤니티
-│   ├── event/             # 이벤트/공지
-│   ├── guide/             # 이용가이드
-│   └── notifications/     # 알림
-├── app.html               # HTML 템플릿
-├── app.css               # 전역 스타일
-└── hooks.server.js       # SvelteKit 서버 훅
+│   ├── components/        # Svelte 컴포넌트
+│   ├── server/           # 서버사이드 코드
+│   │   ├── entities/     # TypeORM 엔티티
+│   │   ├── migrations/   # 데이터베이스 마이그레이션
+│   │   └── ...
+│   ├── stores/           # Svelte 스토어
+│   └── utils/            # 유틸리티 함수
+├── routes/              # SvelteKit 라우트
+│   ├── api/            # API 엔드포인트
+│   └── ...
+└── ...
 ```
 
-## 환경변수
+## 개발 가이드
 
-프로덕션 환경에서는 다음 환경변수들을 설정해야 합니다:
+### 새로운 API 추가
+1. `src/routes/api/` 하위에 라우트 파일 생성
+2. TypeORM 엔티티 정의 (필요시)
+3. 프론트엔드 스토어에서 API 연동
 
-- `DB_HOST` - 데이터베이스 호스트
-- `DB_PORT` - 데이터베이스 포트
-- `DB_USERNAME` - 데이터베이스 사용자명
-- `DB_PASSWORD` - 데이터베이스 비밀번호
-- `DB_DATABASE` - 데이터베이스 이름
-- `JWT_SECRET` - JWT 시크릿 키
-- `NODE_ENV` - 환경 설정 (production/development)
+### 새로운 페이지 추가
+1. `src/routes/` 하위에 Svelte 페이지 파일 생성
+2. 필요한 컴포넌트 및 스토어 연동
 
-## 라이센스
+### 데이터베이스 스키마 변경
+1. TypeORM 엔티티 수정
+2. 마이그레이션 생성: `npm run migration:generate`
+3. 마이그레이션 실행: `npm run migration:run`
 
-MIT License
+## 배포
+
+### 프로덕션 빌드
+```bash
+npm run build
+```
+
+### 프로덕션 환경 설정
+- `.env` 파일에서 `NODE_ENV=production` 설정
+- 데이터베이스 연결 정보 업데이트
+- JWT_SECRET 보안 강화
+
+## 라이선스
+
+이 프로젝트는 MIT 라이선스 하에 있습니다.
+
+## 기여
+
+1. Fork the Project
+2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the Branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## 문의
+
+프로젝트 관련 문의사항이 있으시면 이슈를 생성해 주세요.

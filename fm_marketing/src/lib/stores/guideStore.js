@@ -153,140 +153,7 @@ function createGuideStore() {
           <li>동일 기간 내 다수의 체험단에 중복 신청한 경우</li>
         </ul>
       `,
-      category: '체험단 정보',
-      thumbnail: '/images/guides/selection_guide.jpg',
-      createdAt: '2025-02-10T11:30:00'
-    },
-    {
-      id: 5,
-      title: '리뷰 작성 가이드',
-      content: `
-        <h2>리뷰 작성 가이드</h2>
-        <p>효과적인 체험단 리뷰 작성 방법을 안내해드립니다.</p>
-        
-        <h3>1. 기본 구성</h3>
-        <p>효과적인 리뷰는 다음과 같은 구성으로 작성하는 것이 좋습니다:</p>
-        <ul>
-          <li>체험 장소/제품 소개 및 외관</li>
-          <li>체험 과정 상세 설명</li>
-          <li>장점과 단점</li>
-          <li>추천 대상 및 이유</li>
-          <li>전체적인 평가 및 결론</li>
-        </ul>
-        
-        <h3>2. 사진 촬영 팁</h3>
-        <p>리뷰에 사용할 사진 촬영 시 다음 사항을 고려하세요:</p>
-        <ul>
-          <li>자연광을 활용하여 밝고 선명하게 촬영</li>
-          <li>다양한 각도에서 촬영</li>
-          <li>제품의 경우 패키지, 성분표, 사용감 등 다각도로 촬영</li>
-          <li>음식점의 경우 외관, 내부, 메뉴판, 음식 등 순차적으로 촬영</li>
-        </ul>
-        
-        <h3>3. 리뷰 작성 시 주의사항</h3>
-        <ul>
-          <li>체험단을 통해 경험했음을 명시 (예: "이 글은 FM마케팅 체험단으로 참여한 후기입니다.")</li>
-          <li>과장된 표현이나 허위 정보 작성 금지</li>
-          <li>부정적인 면도 객관적으로 언급</li>
-          <li>맞춤법과 문법 확인</li>
-          <li>지정된 키워드 자연스럽게 포함</li>
-        </ul>
-        
-        <h3>4. 플랫폼별 작성 팁</h3>
-        <p><strong>블로그</strong></p>
-        <ul>
-          <li>소제목을 활용하여 가독성 높이기</li>
-          <li>글자 크기, 색상 등을 활용하여 중요 내용 강조</li>
-          <li>테이블 활용하여 정보 정리</li>
-        </ul>
-        
-        <p><strong>인스타그램</strong></p>
-        <ul>
-          <li>대표 사진을 첫 장에 배치</li>
-          <li>해시태그 전략적 활용 (지정 해시태그 + 관련 해시태그 10-15개 추가)</li>
-          <li>위치 정보 태그 추가</li>
-        </ul>
-        
-        <h3>5. 우수 리뷰 사례</h3>
-        <p>FM마케팅에서 선정한 우수 리뷰 사례는 '커뮤니티 > 우수 리뷰' 게시판에서 확인할 수 있습니다. 참고하여 퀄리티 높은 리뷰를 작성해보세요!</p>
-      `,
-      category: '체험단 정보',
-      thumbnail: '/images/guides/review_guide.jpg',
-      createdAt: '2025-02-15T16:45:00'
-    }
-  ];
-
-  // 더미 FAQ 데이터
-  const dummyFaqs = [
-    {
-      id: 1,
-      question: '체험단 신청은 어떻게 하나요?',
-      answer: '메인 페이지나 체험단 검색 메뉴에서 원하는 체험단을 찾아 상세 페이지로 이동한 후 \'신청하기\' 버튼을 클릭하여 신청할 수 있습니다. 신청 시 신청 이유와 SNS 정보 등을 상세하게 작성하면 선정 확률이 높아집니다.',
-      category: '체험단 신청',
-      createdAt: '2025-01-10T10:00:00'
-    },
-    {
-      id: 2,
-      question: '체험단 선정 결과는 어떻게 확인하나요?',
-      answer: '체험단 신청 마감 후 보통 3일 이내에 선정 결과가 발표됩니다. 마이페이지 > 체험단 활동 내역에서 선정 결과를 확인할 수 있으며, 선정된 경우 등록된 연락처로 SMS와 이메일 알림도 발송됩니다.',
-      category: '체험단 신청',
-      createdAt: '2025-01-10T10:05:00'
-    },
-    {
-      id: 3,
-      question: '체험단 활동 후 인증은 어떻게 하나요?',
-      answer: '체험 완료 후 지정된 플랫폼(블로그, 인스타그램 등)에 리뷰를 작성한 다음, 마이페이지 > 체험단 활동 > 해당 체험단 항목에서 \'인증하기\' 버튼을 클릭하여 리뷰 URL을 등록하면 됩니다.',
-      category: '체험단 활동',
-      createdAt: '2025-01-10T10:10:00'
-    },
-    {
-      id: 4,
-      question: '포인트는 어떻게 적립되나요?',
-      answer: '회원가입, 로그인, 체험단 활동 완료, 커뮤니티 활동 등 다양한 방법으로 포인트를 적립할 수 있습니다. 적립된 포인트는 마이페이지 > 포인트 내역에서 확인할 수 있습니다.',
-      category: '포인트/결제',
-      createdAt: '2025-01-10T10:15:00'
-    },
-    {
-      id: 5,
-      question: '적립된 포인트는 어떻게 사용하나요?',
-      answer: '적립된 포인트는 유료 체험단 신청 시 사용하거나, 10,000 포인트 이상부터 현금으로 환급 신청이 가능합니다. 환급 신청은 마이페이지 > 포인트 > 환급 신청에서 할 수 있습니다.',
-      category: '포인트/결제',
-      createdAt: '2025-01-10T10:20:00'
-    },
-    {
-      id: 6,
-      question: '체험단 신청 후 취소할 수 있나요?',
-      answer: '체험단 신청 마감 전까지는 마이페이지 > 체험단 신청 내역에서 신청을 취소할 수 있습니다. 단, 이미 선정된 체험단을 취소하는 경우 패널티가 부과될 수 있으니 신중하게 신청해주세요.',
-      category: '체험단 신청',
-      createdAt: '2025-01-10T10:25:00'
-    },
-    {
-      id: 7,
-      question: '체험단으로 선정되면 어떤 과정으로 진행되나요?',
-      answer: '체험단으로 선정되면 SMS와 이메일로 안내를 받게 됩니다. 안내에 따라 체험 일정을 확정하고, 정해진 기간 내에 체험을 진행한 후 48시간 이내에 리뷰를 작성하여 인증하면 됩니다.',
-      category: '체험단 활동',
-      createdAt: '2025-01-10T10:30:00'
-    },
-    {
-      id: 8,
-      question: '리뷰 작성 시 필수로 포함해야 할 내용이 있나요?',
-      answer: '리뷰 작성 시 \'FM마케팅 체험단으로 참여했음\'을 명시해야 하며, 체험단별로 지정된 키워드가 있는 경우 이를 포함해야 합니다. 또한, 최소 5장 이상의 사진을 첨부하고 장점과 단점을 균형있게 작성하는 것을 권장합니다.',
-      category: '체험단 활동',
-      createdAt: '2025-01-10T10:35:00'
-    },
-    {
-      id: 9,
-      question: '회원 정보는 어떻게 변경하나요?',
-      answer: '로그인 후 마이페이지 > 회원정보 수정에서 개인정보, 연락처, SNS 정보 등을 변경할 수 있습니다. 단, 아이디와 이름은 변경이 불가능합니다.',
-      category: '회원 정보',
-      createdAt: '2025-01-10T10:40:00'
-    },
-    {
-      id: 10,
-      question: '체험단 신청 시 자주 거절되는 이유는 무엇인가요?',
-      answer: '체험단 신청이 거절되는 주요 이유로는 1) SNS 활동이 미비한 경우, 2) 신청서 작성이 부실한 경우, 3) 이전 체험단 활동에서 미션을 완료하지 않은 경우, 4) 동일 기간에 여러 체험단에 중복 선정된 경우 등이 있습니다.',
-      category: '체험단 신청',
-      createdAt: '2025-01-10T10:45:00'
+      category: '체험단 정보'
     }
   ];
 
@@ -294,59 +161,77 @@ function createGuideStore() {
     subscribe,
     
     // 가이드 목록 불러오기
-    fetchGuides: (category = null) => {
-      update(state => ({ ...state, loading: true }));
+    fetchGuides: async (category = null) => {
+      update(state => ({ ...state, loading: true, error: null }));
       
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          let filteredGuides = [...dummyGuides];
-          
-          if (category) {
-            filteredGuides = filteredGuides.filter(guide => guide.category === category);
-          }
-          
-          update(state => ({
-            ...state,
-            guides: filteredGuides,
-            loading: false
-          }));
-          
-          resolve(filteredGuides);
-        }, 500);
-      });
+      try {
+        const params = {};
+        if (category) {
+          params.category = category;
+        }
+        
+        const response = await apiClient.get('/guides', params);
+        update(state => ({
+          ...state,
+          guides: response.data.guides || [],
+          loading: false
+        }));
+        
+        return response.data.guides || [];
+      } catch (error) {
+        console.error('가이드 목록 로드 오류:', error);
+        update(state => ({
+          ...state,
+          loading: false,
+          error: error.message || '가이드 목록을 불러올 수 없습니다.'
+        }));
+        return [];
+      }
     },
     
     // FAQ 목록 불러오기
-    fetchFaqs: (category = null) => {
-      update(state => ({ ...state, loading: true }));
+    fetchFaqs: async (category = null) => {
+      update(state => ({ ...state, loading: true, error: null }));
       
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          let filteredFaqs = [...dummyFaqs];
-          
-          if (category) {
-            filteredFaqs = filteredFaqs.filter(faq => faq.category === category);
-          }
-          
-          update(state => ({
-            ...state,
-            faqs: filteredFaqs,
-            loading: false
-          }));
-          
-          resolve(filteredFaqs);
-        }, 500);
-      });
+      try {
+        const params = {};
+        if (category) {
+          params.category = category;
+        }
+        
+        const response = await apiClient.get('/faqs', params);
+        update(state => ({
+          ...state,
+          faqs: response.data.faqs || [],
+          loading: false
+        }));
+        
+        return response.data.faqs || [];
+      } catch (error) {
+        console.error('FAQ 목록 로드 오류:', error);
+        update(state => ({
+          ...state,
+          loading: false,
+          error: error.message || 'FAQ 목록을 불러올 수 없습니다.'
+        }));
+        return [];
+      }
     },
     
     // 가이드 상세 조회
-    getGuideById: (id) => {
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          const guide = dummyGuides.find(g => g.id === parseInt(id));
-          resolve(guide);
-        }, 300);
-      });
+    getGuideById: async (id) => {
+      try {
+        const response = await apiClient.get(`/guides/${id}`);
+        return response.data;
+      } catch (error) {
+        console.error('가이드 상세 조회 오류:', error);
+        return null;
+      }
+    },
+
+    // 오류 상태 초기화
+    clearError: () => {
+      update(state => ({ ...state, error: null }));
     }
   };
 }

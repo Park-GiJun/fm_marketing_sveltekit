@@ -1,4 +1,5 @@
 // 데이터베이스 연결 및 초기 설정
+// @ts-ignore
 import Database from 'better-sqlite3';
 import { dev } from '$app/environment';
 
