@@ -1,5 +1,5 @@
-// 간단한 인증 유틸리티
-import { getDataSource } from './database-init.js';
+// MySQL2 기반 인증 유틸리티
+import { findUser, createUser as dbCreateUser } from './database.js';
 
 // JWT 시크릿 키
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-key-fm-marketing';
@@ -8,28 +8,43 @@ const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-key-fm-marketing';
  * 비밀번호 해싱
  */
 export async function hashPassword(password) {
-  const bcrypt = await import('bcryptjs');
-  const salt = await bcrypt.genSalt(12);
-  return bcrypt.hash(password, salt);
+  try {
+    const bcrypt = await import('bcryptjs');
+    const salt = await bcrypt.genSalt(12);
+    return bcrypt.hash(password, salt);
+  } catch (error) {
+    console.error('bcrypt 로드 실패:', error);
+    throw new Error('비밀번호 해싱 실패');
+  }
 }
 
 /**
  * 비밀번호 검증
  */
 export async function verifyPassword(password, hashedPassword) {
-  const bcrypt = await import('bcryptjs');
-  return bcrypt.compare(password, hashedPassword);
+  try {
+    const bcrypt = await import('bcryptjs');
+    return bcrypt.compare(password, hashedPassword);
+  } catch (error) {
+    console.error('bcrypt 로드 실패:', error);
+    throw new Error('비밀번호 검증 실패');
+  }
 }
 
 /**
  * JWT 토큰 생성
  */
 export async function generateToken(payload) {
-  const jwt = await import('jsonwebtoken');
-  return jwt.sign(payload, JWT_SECRET, {
-    expiresIn: '7d',
-    issuer: 'fm-marketing'
-  });
+  try {
+    const jwt = await import('jsonwebtoken');
+    return jwt.sign(payload, JWT_SECRET, {
+      expiresIn: '7d',
+      issuer: 'fm-marketing'
+    });
+  } catch (error) {
+    console.error('JWT 로드 실패:', error);
+    throw new Error('토큰 생성 실패');
+  }
 }
 
 /**
@@ -40,6 +55,7 @@ export async function verifyToken(token) {
     const jwt = await import('jsonwebtoken');
     return jwt.verify(token, JWT_SECRET);
   } catch (error) {
+    console.error('JWT 검증 실패:', error);
     return null;
   }
 }
@@ -63,17 +79,33 @@ export async function getUserFromRequest(request) {
   }
 
   try {
-    const dataSource = await getDataSource();
-    const [user] = await dataSource.query(`
-      SELECT id, username, email, name, nickname, profile_image, points, level, role, is_active, is_verified
-      FROM users 
-      WHERE id = ? AND is_active = 1
-    `, [payload.userId]);
-
-    return user || null;
+    const user = await findUser({ id: payload.userId });
+    
+    if (user) {
+      // 비밀번호 해시 제거
+      const { password_hash, ...userInfo } = user;
+      return {
+        ...userInfo,
+        passwordHash: password_hash // 필요한 경우를 위해 다른 이름으로 유지
+      };
+    }
+    
+    return null;
   } catch (error) {
     console.error('사용자 조회 오류:', error);
     return null;
+  }
+}
+
+/**
+ * 사용자 생성
+ */
+export async function createUser(userData) {
+  try {
+    return await dbCreateUser(userData);
+  } catch (error) {
+    console.error('사용자 생성 오류:', error);
+    throw error;
   }
 }
 

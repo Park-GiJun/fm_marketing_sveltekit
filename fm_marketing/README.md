@@ -1,76 +1,66 @@
-# FM마케팅 체험단 플랫폼
+# FM마케팅 플랫폼
 
-TypeORM 기반의 체험단 마케팅 플랫폼입니다.
-
-## 주요 기능
-
-- 사용자 인증 (회원가입, 로그인)
-- 체험단 관리 (생성, 조회, 신청)
-- 커뮤니티 (게시글, 댓글)
-- 포인트 시스템
-- 알림 시스템
-- 관리자 대시보드
+체험단 마케팅을 위한 통합 플랫폼입니다.
 
 ## 기술 스택
 
-- **Frontend**: SvelteKit, TypeScript
+- **Frontend**: SvelteKit, Tailwind CSS
 - **Backend**: SvelteKit API Routes, TypeORM
 - **Database**: MySQL
 - **Authentication**: JWT
 
-## 개발 환경 설정
+## 설정 및 실행
 
-### 1. 프로젝트 클론
-
-```bash
-git clone <repository-url>
-cd fm-marketing
-```
-
-### 2. 의존성 설치
+### 1. 의존성 설치
 
 ```bash
 npm install
 ```
 
-### 3. 환경변수 설정
+### 2. 환경변수 설정
 
-`.env.example` 파일을 `.env`로 복사하고 필요한 값들을 설정하세요.
-
-```bash
-cp .env.example .env
-```
-
-### 4. 데이터베이스 연결 테스트
+`.env` 파일을 생성하고 다음 내용을 추가:
 
 ```bash
-npm run test:db
+# 데이터베이스 설정
+DB_HOST=210.121.177.150
+DB_PORT=3306
+DB_USERNAME=gijunpark
+DB_PASSWORD=park9832
+DB_DATABASE=FMMarketing
+
+# JWT 시크릿 키
+JWT_SECRET=fm-marketing-secret-key-2025
+
+# 개발 환경 설정
+NODE_ENV=development
 ```
 
-### 5. 개발 서버 실행
+### 3. 데이터베이스 초기화
+
+```bash
+npm run setup:db
+```
+
+### 4. 개발 서버 실행
 
 ```bash
 npm run dev
 ```
 
-## 프로젝트 구조
+## 주요 기능
 
-```
-src/
-├── lib/
-│   ├── server/
-│   │   ├── entities/          # TypeORM 엔티티
-│   │   ├── data-source-unified.js  # 통합 데이터소스
-│   │   ├── auth-unified.js    # 통합 인증 유틸리티
-│   │   └── utils/
-│   ├── stores/               # Svelte 스토어
-│   ├── components/           # UI 컴포넌트
-│   └── utils/               # 클라이언트 유틸리티
-├── routes/
-│   ├── api/                 # API 엔드포인트
-│   └── (앱 페이지들)
-└── app.html
-```
+### 사용자 기능
+- 회원가입/로그인
+- 체험단 검색 및 신청
+- 커뮤니티 참여
+- 포인트 관리
+
+### 관리자 기능
+- 체험단 관리
+- 사용자 관리
+- 커뮤니티 관리
+- 통계 관리
 
 ## API 엔드포인트
 
@@ -82,82 +72,51 @@ src/
 
 ### 체험단
 - `GET /api/experiences` - 체험단 목록
-- `POST /api/experiences` - 체험단 생성 (관리자)
 - `GET /api/experiences/[id]` - 체험단 상세
+- `POST /api/experiences` - 체험단 생성 (관리자)
 - `POST /api/experiences/[id]/apply` - 체험단 신청
 
 ### 커뮤니티
 - `GET /api/community/posts` - 게시글 목록
-- `POST /api/community/posts` - 게시글 작성
 - `GET /api/community/posts/[id]` - 게시글 상세
+- `POST /api/community/posts` - 게시글 작성
 
-## 데이터베이스 스키마
+## 데이터베이스 구조
 
-주요 엔티티:
-- `User` - 사용자
-- `Experience` - 체험단
-- `ExperienceApplication` - 체험단 신청
-- `CommunityPost` - 커뮤니티 게시글
-- `Comment` - 댓글
-- `PointTransaction` - 포인트 거래 내역
-- `Notification` - 알림
+### 주요 테이블
+- `users` - 사용자 정보
+- `experiences` - 체험단 정보
+- `experience_applications` - 체험단 신청
+- `community_posts` - 커뮤니티 게시글
+- `comments` - 댓글
+- `point_transactions` - 포인트 거래내역
+- `notifications` - 알림
 
-## 개발 가이드
+## 개발 모드 특징
 
-### 새로운 API 엔드포인트 추가
+- 데이터베이스 연결 실패 시 자동으로 더미 데이터 모드로 전환
+- 개발 환경에서 자동 스키마 동기화
+- 시드 데이터 자동 생성
 
-1. `src/routes/api/` 하위에 폴더 생성
-2. `+server.js` 파일에 HTTP 메소드별 핸들러 작성
-3. TypeORM 리포지토리를 사용한 데이터베이스 작업
-4. 적절한 에러 핸들링 및 응답 구조 준수
+## 프로덕션 배포
 
-### 새로운 엔티티 추가
-
-1. `src/lib/server/entities/` 하위에 엔티티 파일 생성
-2. TypeORM 데코레이터를 사용한 엔티티 정의
-3. `entities/index.js`에 엔티티 export 추가
-4. `data-source-unified.js`의 entities 배열에 추가
-
-## 배포
-
-### 프로덕션 빌드
-
-```bash
-npm run build
-```
-
-### 환경변수 설정
-
-프로덕션 환경에서는 다음 환경변수들을 반드시 설정해야 합니다:
-- `JWT_SECRET` - 안전한 랜덤 문자열로 변경
-- `DB_*` - 프로덕션 데이터베이스 정보
-- `NODE_ENV=production`
+1. 환경변수 설정 (프로덕션용)
+2. 빌드: `npm run build`
+3. 프리뷰: `npm run preview`
 
 ## 문제 해결
 
 ### 데이터베이스 연결 오류
+1. `.env` 파일의 데이터베이스 설정 확인
+2. MySQL 서버 실행 상태 확인
+3. 네트워크 연결 확인
+4. 사용자 권한 확인
 
-1. 환경변수 확인
-2. 데이터베이스 서버 상태 확인
-3. 방화벽 설정 확인
+### TypeORM 오류
+1. `reflect-metadata` import 확인
+2. 엔티티 파일 경로 확인
+3. 데코레이터 설정 확인
 
-### 테스트 명령어
+## 라이센스
 
-```bash
-# 데이터베이스 연결 테스트
-npm run test:db
-
-# TypeORM 엔티티 동기화 확인
-npm run dev
-```
-
-## 기여하기
-
-1. 이슈 생성
-2. 기능 브랜치 생성
-3. 변경사항 커밋
-4. 풀 리퀘스트 생성
-
-## 라이선스
-
-MIT License
+이 프로젝트는 MIT 라이센스 하에 있습니다.

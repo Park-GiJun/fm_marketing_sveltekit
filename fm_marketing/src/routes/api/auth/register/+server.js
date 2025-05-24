@@ -1,27 +1,7 @@
-// 회원가입 API - 간단한 더미 데이터 버전
+// 회원가입 API - MySQL2 버전
 import { json } from '@sveltejs/kit';
-
-// 간단한 유효성 검사 함수들
-function isValidEmail(email) {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
-}
-
-function isValidPassword(password) {
-  return password.length >= 8 && /[A-Za-z]/.test(password) && /\d/.test(password);
-}
-
-function isValidUsername(username) {
-  const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
-  return usernameRegex.test(username);
-}
-
-// 더미 사용자 데이터베이스 (실제로는 데이터베이스 사용)
-const dummyUsers = [
-  { id: 1, username: 'admin', email: 'admin@fmmarketing.com' },
-  { id: 2, username: 'user1', email: 'user1@example.com' },
-  { id: 3, username: 'user2', email: 'user2@example.com' }
-];
+import { findUser, executeQuery } from '$lib/server/database.js';
+import { hashPassword, generateToken, isValidEmail, isValidPassword, isValidUsername, createUser } from '$lib/server/auth.js';
 
 export async function POST({ request }) {
   try {
@@ -44,34 +24,41 @@ export async function POST({ request }) {
       return json({ error: '비밀번호는 최소 8자이며, 문자와 숫자를 포함해야 합니다.' }, { status: 400 });
     }
 
-    // 중복 검사 (더미 데이터)
-    const existingUser = dummyUsers.find(user => 
-      user.username === username || user.email === email
-    );
+    // 중복 검사
+    const existingUserByUsername = await findUser({ username });
+    const existingUserByEmail = await findUser({ email });
 
-    if (existingUser) {
-      return json({ error: '이미 사용 중인 사용자명 또는 이메일입니다.' }, { status: 409 });
+    if (existingUserByUsername) {
+      return json({ error: '이미 사용 중인 사용자명입니다.' }, { status: 409 });
     }
 
-    // 새 사용자 생성 (더미)
-    const newUser = {
-      id: Date.now(),
+    if (existingUserByEmail) {
+      return json({ error: '이미 사용 중인 이메일입니다.' }, { status: 409 });
+    }
+
+    // 비밀번호 해싱
+    const passwordHash = await hashPassword(password);
+
+    // 새 사용자 생성
+    const newUser = await createUser({
       username,
       email,
+      passwordHash,
       name,
       nickname: nickname || name,
-      points: 1000,
+      points: 1000, // 회원가입 축하 포인트
       level: 'bronze',
       role: 'user',
-      isActive: true,
-      isVerified: false,
-      createdAt: new Date().toISOString()
-    };
+      isVerified: false
+    });
 
-    // 더미 JWT 토큰 생성
-    const token = `dummy-jwt-token-${Date.now()}`;
+    // JWT 토큰 생성
+    const token = await generateToken({ userId: newUser.id });
 
-    return json({ user: newUser, token }, { status: 201 });
+    // 사용자 정보 반환 (비밀번호 제외)
+    const { password_hash, ...userInfo } = newUser;
+
+    return json({ user: userInfo, token }, { status: 201 });
 
   } catch (error) {
     console.error('회원가입 오류:', error);

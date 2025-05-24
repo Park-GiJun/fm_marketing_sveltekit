@@ -1,48 +1,7 @@
-// 로그인 API - 간단한 더미 데이터 버전
+// 로그인 API - MySQL2 버전
 import { json } from '@sveltejs/kit';
-
-// 더미 사용자 데이터베이스
-const dummyUsers = [
-  { 
-    id: 1, 
-    username: 'admin', 
-    email: 'admin@fmmarketing.com', 
-    password: 'admin123!',
-    name: '관리자',
-    nickname: '관리자',
-    points: 50000,
-    level: 'platinum',
-    role: 'admin',
-    isActive: true,
-    isVerified: true
-  },
-  { 
-    id: 2, 
-    username: 'user1', 
-    email: 'user1@example.com', 
-    password: 'user123!',
-    name: '김철수',
-    nickname: '철수',
-    points: 5000,
-    level: 'bronze',
-    role: 'user',
-    isActive: true,
-    isVerified: true
-  },
-  { 
-    id: 3, 
-    username: 'user2', 
-    email: 'user2@example.com', 
-    password: 'user123!',
-    name: '이영희',
-    nickname: '영희',
-    points: 12000,
-    level: 'silver',
-    role: 'user',
-    isActive: true,
-    isVerified: true
-  }
-];
+import { findUser, executeQuery } from '$lib/server/database.js';
+import { verifyPassword, generateToken } from '$lib/server/auth.js';
 
 export async function POST({ request }) {
   try {
@@ -54,27 +13,30 @@ export async function POST({ request }) {
     }
 
     // 사용자 조회 (username 또는 email로 로그인 가능)
-    const user = dummyUsers.find(u => 
-      (u.username === username || u.email === username) && u.isActive
-    );
+    let user = await findUser({ username });
+    if (!user) {
+      user = await findUser({ email: username });
+    }
 
     if (!user) {
       return json({ error: '존재하지 않는 사용자입니다.' }, { status: 401 });
     }
 
-    // 비밀번호 검증 (실제로는 해시 비교)
-    if (user.password !== password) {
+    // 비밀번호 검증
+    const isPasswordValid = await verifyPassword(password, user.password_hash);
+    if (!isPasswordValid) {
       return json({ error: '비밀번호가 일치하지 않습니다.' }, { status: 401 });
     }
 
-    // 일일 로그인 포인트 지급 (더미)
+    // 일일 로그인 포인트 지급 (10포인트)
+    await executeQuery('UPDATE users SET points = points + 10 WHERE id = ?', [user.id]);
     user.points += 10;
 
-    // 더미 JWT 토큰 생성
-    const token = `dummy-jwt-token-${user.id}-${Date.now()}`;
+    // JWT 토큰 생성
+    const token = await generateToken({ userId: user.id });
 
     // 사용자 정보 반환 (비밀번호 제외)
-    const { password: _, ...userInfo } = user;
+    const { password_hash, ...userInfo } = user;
 
     return json({ user: userInfo, token });
 
