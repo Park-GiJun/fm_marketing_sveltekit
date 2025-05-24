@@ -1,6 +1,10 @@
 <!-- src/lib/components/common/ImageUploader.svelte -->
 <script>
 	import { createEventDispatcher } from 'svelte';
+	import { imageProcessor } from '$lib/utils/imageProcessor.js';
+	import { toast } from '$lib/stores/toastStore.js';
+	import ImageEditor from './ImageEditor.svelte';
+	import Button from './Button.svelte';
 	
 	const dispatch = createEventDispatcher();
 	
@@ -9,10 +13,16 @@
 	export let allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 	export let disabled = false;
 	export let previewMode = true;
+	export let enableEditor = true;
+	export let autoOptimize = false;
+	export let generateThumbnails = false;
 	
 	let files = [];
 	let dragOver = false;
 	let fileInput;
+	let showEditor = false;
+	let editingFile = null;
+	let processing = false;
 	
 	// 파일 선택 핸들러
 	function handleFileSelect(event) {
@@ -44,34 +54,70 @@
 	}
 	
 	// 파일 처리
-	function processFiles(newFiles) {
+	async function processFiles(newFiles) {
 		const validFiles = [];
 		
 		for (const file of newFiles) {
 			// 파일 개수 체크
 			if (files.length + validFiles.length >= maxFiles) {
-				alert(`최대 ${maxFiles}개의 파일만 업로드할 수 있습니다.`);
+				toast.warning(`최대 ${maxFiles}개의 파일만 업로드할 수 있습니다.`);
 				break;
 			}
 			
 			// 파일 타입 체크
-			if (!allowedTypes.includes(file.type)) {
-				alert(`${file.name}: 지원하지 않는 파일 형식입니다.`);
+			if (!imageProcessor.isSupportedFormat(file)) {
+				toast.error(`${file.name}: 지원하지 않는 파일 형식입니다.`);
 				continue;
 			}
 			
 			// 파일 크기 체크
-			if (file.size > maxSize) {
-				alert(`${file.name}: 파일 크기가 너무 큽니다. (최대 ${formatFileSize(maxSize)})`);
+			if (!imageProcessor.isValidFileSize(file, maxSize)) {
+				toast.error(`${file.name}: 파일 크기가 너무 큽니다. (최대 ${formatFileSize(maxSize)})`);
 				continue;
 			}
 			
+			let processedFile = file;
+			let preview = URL.createObjectURL(file);
+			let thumbnail = null;
+			
+			try {
+				// 자동 최적화
+				if (autoOptimize) {
+					processing = true;
+					const optimizedImage = await imageProcessor.loadFromFile(file);
+					const optimized = await imageProcessor.optimizeImage(optimizedImage);
+					const optimizedBlob = await imageProcessor.toBlob(optimized);
+					processedFile = new File([optimizedBlob], file.name, { type: optimizedBlob.type });
+					
+					// 새 미리보기 생성
+					URL.revokeObjectURL(preview);
+					preview = URL.createObjectURL(processedFile);
+				}
+				
+				// 썸네일 생성
+				if (generateThumbnails) {
+					const image = await imageProcessor.loadFromFile(processedFile);
+					const thumbnailImage = await imageProcessor.generateThumbnail(image, 150);
+					thumbnail = await imageProcessor.toBase64(thumbnailImage);
+				}
+				
+			} catch (error) {
+				console.error('이미지 처리 실패:', error);
+				toast.error(`${file.name}: 이미지 처리에 실패했습니다.`);
+				continue;
+			} finally {
+				processing = false;
+			}
+			
 			validFiles.push({
-				file,
+				file: processedFile,
+				originalFile: file,
 				id: Date.now() + Math.random(),
-				preview: URL.createObjectURL(file),
+				preview,
+				thumbnail,
 				name: file.name,
-				size: file.size
+				size: processedFile.size,
+				optimized: autoOptimize
 			});
 		}
 		
@@ -88,6 +134,88 @@
 		
 		files = files.filter(f => f.id !== fileId);
 		dispatch('change', files);
+	}
+	
+	// 이미지 편집
+	function editImage(fileId) {
+		const fileToEdit = files.find(f => f.id === fileId);
+		if (fileToEdit) {
+			editingFile = fileToEdit;
+			showEditor = true;
+		}
+	}
+	
+	// 편집 완료
+	function handleImageSave(event) {
+		const { editedFile } = event.detail;
+		
+		// 편집된 파일로 교체
+		files = files.map(f => {
+			if (f.id === editingFile.id) {
+				// 기존 미리보기 URL 해제
+				URL.revokeObjectURL(f.preview);
+				
+				return {
+					...f,
+					file: editedFile,
+					preview: URL.createObjectURL(editedFile),
+					size: editedFile.size,
+					edited: true
+				};
+			}
+			return f;
+		});
+		
+		dispatch('change', files);
+		showEditor = false;
+		editingFile = null;
+	}
+	
+	// 편집 취소
+	function handleEditorClose() {
+		showEditor = false;
+		editingFile = null;
+	}
+	
+	// 이미지 최적화
+	async function optimizeFile(fileId) {
+		const fileToOptimize = files.find(f => f.id === fileId);
+		if (!fileToOptimize || processing) return;
+		
+		processing = true;
+		
+		try {
+			const image = await imageProcessor.loadFromFile(fileToOptimize.file);
+			const optimizedImage = await imageProcessor.optimizeImage(image);
+			const optimizedBlob = await imageProcessor.toBlob(optimizedImage);
+			const optimizedFile = new File([optimizedBlob], fileToOptimize.name, { type: optimizedBlob.type });
+			
+			// 파일 업데이트
+			files = files.map(f => {
+				if (f.id === fileId) {
+					// 기존 미리보기 URL 해제
+					URL.revokeObjectURL(f.preview);
+					
+					return {
+						...f,
+						file: optimizedFile,
+						preview: URL.createObjectURL(optimizedFile),
+						size: optimizedFile.size,
+						optimized: true
+					};
+				}
+				return f;
+			});
+			
+			dispatch('change', files);
+			toast.success('이미지가 최적화되었습니다.');
+			
+		} catch (error) {
+			console.error('최적화 실패:', error);
+			toast.error('이미지 최적화에 실패했습니다.');
+		} finally {
+			processing = false;
+		}
 	}
 	
 	// 파일 크기 포맷팅
@@ -158,22 +286,64 @@
 						{#if previewMode}
 							<div class="preview-image">
 								<img src={file.preview} alt={file.name} />
-								<button 
-									class="remove-button"
-									on:click={() => removeFile(file.id)}
-									type="button"
-								>
-									<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-										<line x1="18" y1="6" x2="6" y2="18"></line>
-										<line x1="6" y1="6" x2="18" y2="18"></line>
-									</svg>
-								</button>
+								
+								<div class="image-overlay">
+									<div class="overlay-actions">
+										{#if enableEditor}
+											<button 
+												class="action-button edit"
+												on:click={() => editImage(file.id)}
+												type="button"
+												title="편집"
+											>
+												<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+													<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+													<path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+												</svg>
+											</button>
+										{/if}
+										
+										{#if !file.optimized && !autoOptimize}
+											<button 
+												class="action-button optimize"
+												on:click={() => optimizeFile(file.id)}
+												type="button"
+												title="최적화"
+												disabled={processing}
+											>
+												<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+													<path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+												</svg>
+											</button>
+										{/if}
+										
+										<button 
+											class="action-button remove"
+											on:click={() => removeFile(file.id)}
+											type="button"
+											title="삭제"
+										>
+											<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+												<line x1="18" y1="6" x2="6" y2="18"></line>
+												<line x1="6" y1="6" x2="18" y2="18"></line>
+											</svg>
+										</button>
+									</div>
+								</div>
 							</div>
 						{/if}
 						
 						<div class="file-info">
 							<span class="file-name">{file.name}</span>
-							<span class="file-size">{formatFileSize(file.size)}</span>
+							<div class="file-details">
+								<span class="file-size">{formatFileSize(file.size)}</span>
+								{#if file.optimized}
+									<span class="file-status optimized">최적화됨</span>
+								{/if}
+								{#if file.edited}
+									<span class="file-status edited">편집됨</span>
+								{/if}
+							</div>
 						</div>
 					</div>
 				{/each}
@@ -181,6 +351,16 @@
 		</div>
 	{/if}
 </div>
+
+<!-- 이미지 편집기 -->
+{#if enableEditor && editingFile}
+	<ImageEditor 
+		file={editingFile.originalFile || editingFile.file}
+		bind:open={showEditor}
+		on:save={handleImageSave}
+		on:close={handleEditorClose}
+	/>
+{/if}
 
 <style>
 	.image-uploader {

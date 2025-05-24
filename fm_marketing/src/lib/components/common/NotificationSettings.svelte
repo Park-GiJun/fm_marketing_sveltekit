@@ -7,7 +7,7 @@
 
 	let settings = {
 		email: true,
-		push: true,
+		push: false,
 		inApp: true,
 		experienceReminders: true,
 		applicationResults: true,
@@ -15,7 +15,6 @@
 		systemNotices: true
 	};
 
-	let pushPermission = 'default'; // 'default', 'granted', 'denied'
 	let loading = false;
 
 	// 설정 옵션 정의
@@ -24,12 +23,6 @@
 			key: 'email',
 			title: '이메일 알림',
 			description: '중요한 알림을 이메일로 받습니다.',
-			category: 'delivery'
-		},
-		{
-			key: 'push',
-			title: '푸시 알림',
-			description: '브라우저 푸시 알림을 받습니다.',
 			category: 'delivery'
 		},
 		{
@@ -74,11 +67,6 @@
 			settings = { ...state.settings };
 		});
 
-		// 푸시 알림 권한 상태 확인
-		if ('Notification' in window) {
-			pushPermission = Notification.permission;
-		}
-
 		return () => {
 			unsubscribe();
 		};
@@ -87,35 +75,6 @@
 	// 설정 변경 핸들러
 	function handleSettingChange(key, value) {
 		settings[key] = value;
-		
-		// 푸시 알림이 활성화되었는데 권한이 없는 경우
-		if (key === 'push' && value && pushPermission !== 'granted') {
-			requestPushPermission();
-		}
-	}
-
-	// 푸시 알림 권한 요청
-	async function requestPushPermission() {
-		if ('Notification' in window) {
-			loading = true;
-			
-			try {
-				const permission = await notificationStore.requestPermission();
-				pushPermission = Notification.permission;
-				
-				if (permission) {
-					toast.success('푸시 알림 권한이 허용되었습니다.');
-				} else {
-					toast.warning('푸시 알림 권한이 거부되었습니다. 브라우저 설정에서 변경할 수 있습니다.');
-					settings.push = false;
-				}
-			} catch (error) {
-				toast.error('푸시 알림 권한 요청 중 오류가 발생했습니다.');
-				settings.push = false;
-			} finally {
-				loading = false;
-			}
-		}
 	}
 
 	// 설정 저장
@@ -163,12 +122,6 @@
 						<div class="setting-info">
 							<h4 class="setting-title">{option.title}</h4>
 							<p class="setting-description">{option.description}</p>
-							
-							{#if option.key === 'push' && pushPermission === 'denied'}
-								<span class="permission-warning">
-									브라우저에서 알림이 차단되었습니다. 설정에서 허용해주세요.
-								</span>
-							{/if}
 						</div>
 						
 						<div class="setting-control">
@@ -177,7 +130,6 @@
 									type="checkbox" 
 									bind:checked={settings[option.key]}
 									on:change={(e) => handleSettingChange(option.key, e.target.checked)}
-									disabled={option.key === 'push' && pushPermission === 'denied'}
 								/>
 								<span class="toggle-slider"></span>
 							</label>
@@ -319,13 +271,6 @@
 		color: #6b7280;
 		margin: 0;
 		line-height: 1.4;
-	}
-
-	.permission-warning {
-		display: block;
-		font-size: 0.75rem;
-		color: #dc2626;
-		margin-top: 0.25rem;
 	}
 
 	.setting-control {

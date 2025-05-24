@@ -7,7 +7,7 @@ function createNotificationStore() {
 		unreadCount: 0,
 		settings: {
 			email: true,
-			push: true,
+			push: false,
 			inApp: true,
 			experienceReminders: true,
 			applicationResults: true,
@@ -108,16 +108,6 @@ function createNotificationStore() {
 				unreadCount: state.unreadCount + 1
 			}));
 
-			// 브라우저 푸시 알림 (권한이 있는 경우)
-			if ('Notification' in window && Notification.permission === 'granted') {
-				new Notification(newNotification.title, {
-					body: newNotification.message,
-					icon: '/images/logo-small.png',
-					badge: '/images/logo-small.png',
-					tag: newNotification.id
-				});
-			}
-
 			return newNotification.id;
 		},
 
@@ -178,15 +168,6 @@ function createNotificationStore() {
 				...state,
 				settings: { ...state.settings, ...newSettings }
 			}));
-		},
-
-		// 푸시 알림 권한 요청
-		requestPermission: async () => {
-			if ('Notification' in window) {
-				const permission = await Notification.requestPermission();
-				return permission === 'granted';
-			}
-			return false;
 		},
 
 		// 실시간 알림 시뮬레이션 (개발용)
