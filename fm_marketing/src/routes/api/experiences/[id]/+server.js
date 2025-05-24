@@ -1,10 +1,8 @@
 // 체험단 상세 조회/수정/삭제 API
 import { json } from '@sveltejs/kit';
-import { getDataSource } from '$lib/server/data-source.js';
-import { Experience, ExperienceStatus } from '$lib/server/entities/Experience.js';
-import { ExperienceApplication } from '$lib/server/entities/ExperienceApplication.js';
-import { User, UserRole } from '$lib/server/entities/User.js';
-import { getUserFromRequest } from '$lib/server/auth.js';
+import { getDataSource } from '$lib/server/data-source-unified.js';
+import { Experience, ExperienceApplication, User } from '$lib/server/entities/index.js';
+import { getUserFromRequest } from '$lib/server/auth-unified.js';
 
 export async function GET({ params, request }) {
 	try {
@@ -51,8 +49,11 @@ export async function GET({ params, request }) {
 			});
 		}
 
+		// JSON 필드 파싱
 		const result = {
 			...experienceData,
+			images: experienceData.images ? JSON.parse(experienceData.images) : [],
+			tags: experienceData.tags ? JSON.parse(experienceData.tags) : [],
 			applicationCount,
 			userApplication,
 			creatorName: experienceData.creator?.name
@@ -88,7 +89,7 @@ export async function PUT({ params, request }) {
 			return json({ error: '체험단을 찾을 수 없습니다.' }, { status: 404 });
 		}
 
-		if (user.role !== UserRole.ADMIN && user.id !== experience.createdById) {
+		if (user.role !== 'admin' && user.id !== experience.createdById) {
 			return json({ error: '수정 권한이 없습니다.' }, { status: 403 });
 		}
 
@@ -119,8 +120,8 @@ export async function PUT({ params, request }) {
 			requirements,
 			companyName,
 			contactInfo,
-			images: images || [],
-			tags: tags || [],
+			images: JSON.stringify(images || []),
+			tags: JSON.stringify(tags || []),
 			isPromoted,
 			status
 		};
@@ -149,7 +150,7 @@ export async function DELETE({ params, request }) {
 			return json({ error: '인증이 필요합니다.' }, { status: 401 });
 		}
 
-		if (user.role !== UserRole.ADMIN) {
+		if (user.role !== 'admin') {
 			return json({ error: '관리자 권한이 필요합니다.' }, { status: 403 });
 		}
 
@@ -168,13 +169,10 @@ export async function DELETE({ params, request }) {
 		// 트랜잭션으로 관련 데이터 삭제
 		await dataSource.transaction(async manager => {
 			// 관련 신청 내역 삭제
-			await manager.delete('ExperienceApplication', { experienceId: parseInt(id) });
-			
-			// 관련 알림 삭제 (향후 구현 시)
-			// await manager.delete('Notification', { referenceType: 'experience', referenceId: parseInt(id) });
+			await manager.delete(ExperienceApplication, { experienceId: parseInt(id) });
 			
 			// 체험단 삭제
-			await manager.delete('Experience', { id: parseInt(id) });
+			await manager.delete(Experience, { id: parseInt(id) });
 		});
 
 		return json({ message: '체험단이 삭제되었습니다.' });

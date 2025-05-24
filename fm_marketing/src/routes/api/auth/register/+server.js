@@ -1,6 +1,6 @@
 // 회원가입 API
 import { json } from '@sveltejs/kit';
-import { getDataSource } from '$lib/server/database-init.js';
+import { getDataSource } from '$lib/server/data-source-unified.js';
 import { hashPassword, generateToken, isValidEmail, isValidPassword, isValidUsername } from '$lib/server/auth.js';
 
 export async function POST({ request }) {

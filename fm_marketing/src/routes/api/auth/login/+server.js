@@ -1,6 +1,6 @@
 // 로그인 API
 import { json } from '@sveltejs/kit';
-import { getDataSource } from '$lib/server/database-init.js';
+import { getDataSource } from '$lib/server/data-source-unified.js';
 import { verifyPassword, generateToken } from '$lib/server/auth.js';
 
 export async function POST({ request }) {

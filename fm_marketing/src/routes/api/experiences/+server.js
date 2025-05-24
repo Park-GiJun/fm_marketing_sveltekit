@@ -1,6 +1,6 @@
 // 체험단 목록 조회/생성 API
 import { json } from '@sveltejs/kit';
-import { getDataSource } from '$lib/server/database-init.js';
+import { getDataSource } from '$lib/server/data-source-unified.js';
 import { getUserFromRequest } from '$lib/server/auth.js';
 
 export async function GET({ url }) {

@@ -5,8 +5,8 @@ async function ensureDbInitialized() {
   if (!isInitialized) {
     try {
       // 동적 import로 서버에서만 로드
-      const { initializeDatabase } = await import('$lib/server/database-init.js');
-      await initializeDatabase();
+      const { initializeDataSource } = await import('$lib/server/data-source-unified.js');
+      await initializeDataSource();
       isInitialized = true;
     } catch (error) {
       console.error('데이터베이스 초기화 실패:', error);
