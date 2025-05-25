@@ -1,47 +1,49 @@
-// 커뮤니티 게시글 상세 조회/수정/삭제 API
+// 커뮤니티 게시글 상세 조회/수정/삭제 API - MySQL2 버전
 import { json } from '@sveltejs/kit';
-import { findExperiences, executeQuery } from '$lib/server/database.js';
-import { CommunityPost } from '$lib/server/entities/CommunityPost.js';
-import { Comment } from '$lib/server/entities/Comment.js';
-import { User, UserRole } from '$lib/server/entities/User.js';
+import { executeQuery } from '$lib/server/database.js';
 import { getUserFromRequest } from '$lib/server/auth.js';
 
 export async function GET({ params }) {
 	try {
 		const { id } = params;
 
-		const dataSource = await getDataSource();
-		const postRepository = dataSource.getRepository(CommunityPost);
-
-		// 게시글 조회
-		const post = await postRepository
-			.createQueryBuilder('post')
-			.leftJoinAndSelect('post.author', 'author')
-			.leftJoinAndSelect('post.comments', 'comments')
-			.leftJoinAndSelect('comments.author', 'commentAuthor')
-			.where('post.id = :id', { id: parseInt(id) })
-			.andWhere('post.isDeleted = :isDeleted', { isDeleted: false })
-			.orderBy('comments.createdAt', 'ASC')
-			.getOne();
+		// 게시글 상세 조회
+		const [post] = await executeQuery(`
+			SELECT p.*, u.nickname, u.profile_image
+			FROM community_posts p
+			LEFT JOIN users u ON p.author_id = u.id
+			WHERE p.id = ? AND p.is_deleted = 0
+		`, [parseInt(id)]);
 
 		if (!post) {
 			return json({ error: '게시글을 찾을 수 없습니다.' }, { status: 404 });
 		}
 
 		// 조회수 증가
-		await postRepository.update(id, { 
-			views: () => 'views + 1' 
-		});
+		await executeQuery('UPDATE community_posts SET views = views + 1 WHERE id = ?', [parseInt(id)]);
 		post.views += 1;
 
-		// 삭제되지 않은 댓글만 필터링
-		const activeComments = post.comments?.filter(comment => !comment.isDeleted) || [];
+		// 댓글 수 조회
+		const [commentCount] = await executeQuery(`
+			SELECT COUNT(*) as count FROM comments 
+			WHERE post_id = ? AND is_deleted = 0
+		`, [parseInt(id)]);
 
 		const result = {
 			...post,
-			comments: activeComments,
-			commentCount: activeComments.length,
-			authorName: post.author?.name || post.author?.nickname
+			images: post.images ? JSON.parse(post.images) : [],
+			tags: post.tags ? JSON.parse(post.tags) : [],
+			authorId: post.author_id,
+			isPinned: !!post.is_pinned,
+			isDeleted: !!post.is_deleted,
+			createdAt: post.created_at,
+			updatedAt: post.updated_at,
+			commentCount: commentCount?.count || 0,
+			author: {
+				id: post.author_id,
+				nickname: post.nickname || '익명',
+				profileImage: post.profile_image || '/images/default-avatar.jpg'
+			}
 		};
 
 		return json(result);
@@ -61,43 +63,60 @@ export async function PUT({ params, request }) {
 			return json({ error: '인증이 필요합니다.' }, { status: 401 });
 		}
 
-		const dataSource = await getDataSource();
-		const postRepository = dataSource.getRepository(CommunityPost);
-
 		// 게시글 존재 확인 및 권한 체크
-		const post = await postRepository.findOne({
-			where: { id: parseInt(id), isDeleted: false },
-			select: ['id', 'authorId']
-		});
+		const [post] = await executeQuery(`
+			SELECT id, author_id FROM community_posts 
+			WHERE id = ? AND is_deleted = 0
+		`, [parseInt(id)]);
 
 		if (!post) {
 			return json({ error: '게시글을 찾을 수 없습니다.' }, { status: 404 });
 		}
 
-		if (user.role !== UserRole.ADMIN && user.id !== post.authorId) {
+		if (user.role !== 'admin' && user.id !== post.author_id) {
 			return json({ error: '수정 권한이 없습니다.' }, { status: 403 });
 		}
 
 		const data = await request.json();
 		const { title, content, category, tags, images } = data;
 
-		// 업데이트 데이터 준비
-		const updateData = {
+		// 게시글 수정
+		await executeQuery(`
+			UPDATE community_posts 
+			SET title = ?, content = ?, category = ?, tags = ?, images = ?
+			WHERE id = ?
+		`, [
 			title,
 			content,
 			category,
-			tags: tags || [],
-			images: images || []
-		};
+			JSON.stringify(tags || []),
+			JSON.stringify(images || []),
+			parseInt(id)
+		]);
 
-		await postRepository.update(id, updateData);
+		// 수정된 게시글 조회
+		const [updatedPost] = await executeQuery(`
+			SELECT p.*, u.nickname, u.profile_image
+			FROM community_posts p
+			LEFT JOIN users u ON p.author_id = u.id
+			WHERE p.id = ?
+		`, [parseInt(id)]);
 
-		const updatedPost = await postRepository.findOne({
-			where: { id: parseInt(id) },
-			relations: ['author']
+		return json({
+			...updatedPost,
+			images: updatedPost.images ? JSON.parse(updatedPost.images) : [],
+			tags: updatedPost.tags ? JSON.parse(updatedPost.tags) : [],
+			authorId: updatedPost.author_id,
+			isPinned: !!updatedPost.is_pinned,
+			isDeleted: !!updatedPost.is_deleted,
+			createdAt: updatedPost.created_at,
+			updatedAt: updatedPost.updated_at,
+			author: {
+				id: updatedPost.author_id,
+				nickname: updatedPost.nickname || '익명',
+				profileImage: updatedPost.profile_image || '/images/default-avatar.jpg'
+			}
 		});
-
-		return json(updatedPost);
 
 	} catch (error) {
 		console.error('커뮤니티 게시글 수정 오류:', error);
@@ -114,25 +133,24 @@ export async function DELETE({ params, request }) {
 			return json({ error: '인증이 필요합니다.' }, { status: 401 });
 		}
 
-		const dataSource = await getDataSource();
-		const postRepository = dataSource.getRepository(CommunityPost);
-
 		// 게시글 존재 확인 및 권한 체크
-		const post = await postRepository.findOne({
-			where: { id: parseInt(id), isDeleted: false },
-			select: ['id', 'authorId']
-		});
+		const [post] = await executeQuery(`
+			SELECT id, author_id FROM community_posts 
+			WHERE id = ? AND is_deleted = 0
+		`, [parseInt(id)]);
 
 		if (!post) {
 			return json({ error: '게시글을 찾을 수 없습니다.' }, { status: 404 });
 		}
 
-		if (user.role !== UserRole.ADMIN && user.id !== post.authorId) {
+		if (user.role !== 'admin' && user.id !== post.author_id) {
 			return json({ error: '삭제 권한이 없습니다.' }, { status: 403 });
 		}
 
-		// 소프트 삭제 (실제 삭제 대신 isDeleted 플래그 설정)
-		await postRepository.update(id, { isDeleted: true });
+		// 소프트 삭제
+		await executeQuery(`
+			UPDATE community_posts SET is_deleted = 1 WHERE id = ?
+		`, [parseInt(id)]);
 
 		return json({ message: '게시글이 삭제되었습니다.' });
 

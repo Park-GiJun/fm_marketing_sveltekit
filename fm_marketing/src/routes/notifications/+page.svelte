@@ -25,16 +25,16 @@
   
   // 필터된 알림 목록
   $: filteredNotifications = notifications.filter(notification => {
-    if (selectedTab === 'unread') return !notification.read;
-    if (selectedTab === 'read') return notification.read;
+    if (selectedTab === 'unread') return !notification.isRead;
+    if (selectedTab === 'read') return notification.isRead;
     return true;
   });
   
   // 탭별 카운트 업데이트
   $: {
     tabs[0].count = notifications.length;
-    tabs[1].count = notifications.filter(n => !n.read).length;
-    tabs[2].count = notifications.filter(n => n.read).length;
+    tabs[1].count = notifications.filter(n => !n.isRead).length;
+    tabs[2].count = notifications.filter(n => n.isRead).length;
   }
   
   // 상대시간 포맷팅
@@ -64,21 +64,22 @@
     }
   }
   
-  // 카테고리별 배지 색상
-  function getCategoryBadgeType(category) {
-    switch (category) {
-      case 'application': return 'success';
-      case 'reminder': return 'warning';
-      case 'community': return 'primary';
-      case 'point': return 'secondary';
-      case 'system': return 'default';
+  // 타입별 배지 색상
+  function getTypeBadgeType(type) {
+    switch (type) {
+      case 'application_received':
+      case 'application_result': return 'success';
+      case 'new_experience': return 'warning';
+      case 'point_earned': return 'secondary';
+      case 'system':
+      case 'welcome': return 'default';
       default: return 'default';
     }
   }
   
   // 알림 클릭 처리
   function handleNotificationClick(notification) {
-    if (!notification.read) {
+    if (!notification.isRead) {
       notificationStore.markAsRead(notification.id);
     }
 
@@ -111,9 +112,7 @@
       type: 'test',
       title: '테스트 알림',
       message: '이것은 테스트 알림입니다.',
-      priority: 'medium',
-      icon: 'info',
-      category: 'system'
+      priority: 'medium'
     });
   }
   
@@ -189,7 +188,7 @@
           {/each}
           
           <div class="tab-actions">
-            {#if notifications.filter(n => !n.read).length > 0}
+            {#if notifications.filter(n => !n.isRead).length > 0}
               <button class="action-button" on:click={markAllAsRead}>
                 모두 읽음
               </button>
@@ -230,21 +229,21 @@
           {:else}
             {#each filteredNotifications as notification (notification.id)}
               <div 
-                class="notification-item {notification.read ? 'read' : 'unread'}"
+                class="notification-item {notification.isRead ? 'read' : 'unread'}"
                 on:click={() => handleNotificationClick(notification)}
               >
                 <div class="notification-icon {getPriorityColor(notification.priority)}">
-                  {@html notificationIcons[notification.icon] || notificationIcons['info']}
+                  {@html notificationIcons[notification.type] || notificationIcons['info']}
                 </div>
                 
                 <div class="notification-content">
                   <div class="notification-header">
                     <h3 class="notification-title">{notification.title}</h3>
                     <div class="notification-meta">
-                      <Badge type={getCategoryBadgeType(notification.category)} size="sm">
-                        {notification.category}
+                      <Badge type={getTypeBadgeType(notification.type)} size="sm">
+                        {notification.type}
                       </Badge>
-                      <span class="notification-time">{getRelativeTime(notification.timestamp)}</span>
+                      <span class="notification-time">{getRelativeTime(notification.createdAt || notification.timestamp)}</span>
                     </div>
                   </div>
                   
@@ -258,7 +257,7 @@
                 </div>
                 
                 <div class="notification-actions">
-                  {#if !notification.read}
+                  {#if !notification.isRead}
                     <div class="unread-indicator"></div>
                   {/if}
                   

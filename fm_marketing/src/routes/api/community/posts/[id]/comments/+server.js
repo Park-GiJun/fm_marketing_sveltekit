@@ -1,37 +1,60 @@
-// 댓글 목록 조회/생성 API
+// 댓글 목록 조회/생성 API - MySQL2 버전
 import { json } from '@sveltejs/kit';
-import { getDataSource } from '$lib/server/data-source.js';
-import { Comment } from '$lib/server/entities/Comment.js';
-import { CommunityPost } from '$lib/server/entities/CommunityPost.js';
-import { User } from '$lib/server/entities/User.js';
+import { executeQuery } from '$lib/server/database.js';
 import { getUserFromRequest } from '$lib/server/auth.js';
 
 export async function GET({ params }) {
 	try {
 		const { id: postId } = params;
 
-		const dataSource = await getDataSource();
-		const commentRepository = dataSource.getRepository(Comment);
+		// 댓글 조회 (부모-자식 관계 포함)
+		const comments = await executeQuery(`
+			SELECT c.*, u.nickname, u.profile_image
+			FROM comments c
+			LEFT JOIN users u ON c.author_id = u.id
+			WHERE c.post_id = ? AND c.is_deleted = 0
+			ORDER BY 
+				CASE WHEN c.parent_id IS NULL THEN c.id ELSE c.parent_id END ASC,
+				c.parent_id IS NULL DESC,
+				c.created_at ASC
+		`, [parseInt(postId)]);
 
-		const comments = await commentRepository
-			.createQueryBuilder('comment')
-			.leftJoinAndSelect('comment.author', 'author')
-			.leftJoinAndSelect('comment.children', 'children')
-			.leftJoinAndSelect('children.author', 'childAuthor')
-			.where('comment.postId = :postId', { postId: parseInt(postId) })
-			.andWhere('comment.isDeleted = :isDeleted', { isDeleted: false })
-			.andWhere('comment.parentId IS NULL') // 최상위 댓글만
-			.orderBy('comment.createdAt', 'ASC')
-			.addOrderBy('children.createdAt', 'ASC')
-			.getMany();
+		// 댓글을 계층 구조로 변환
+		const parentComments = comments.filter(c => !c.parent_id);
+		const childComments = comments.filter(c => c.parent_id);
 
-		// 삭제되지 않은 대댓글만 필터링
-		const filteredComments = comments.map(comment => ({
-			...comment,
-			children: comment.children?.filter(child => !child.isDeleted) || []
+		const result = parentComments.map(parent => ({
+			...parent,
+			postId: parent.post_id,
+			parentId: parent.parent_id,
+			authorId: parent.author_id,
+			isDeleted: !!parent.is_deleted,
+			createdAt: parent.created_at,
+			updatedAt: parent.updated_at,
+			author: {
+				id: parent.author_id,
+				nickname: parent.nickname || '익명',
+				profileImage: parent.profile_image || '/images/default-avatar.jpg'
+			},
+			children: childComments
+				.filter(child => child.parent_id === parent.id)
+				.map(child => ({
+					...child,
+					postId: child.post_id,
+					parentId: child.parent_id,
+					authorId: child.author_id,
+					isDeleted: !!child.is_deleted,
+					createdAt: child.created_at,
+					updatedAt: child.updated_at,
+					author: {
+						id: child.author_id,
+						nickname: child.nickname || '익명',
+						profileImage: child.profile_image || '/images/default-avatar.jpg'
+					}
+				}))
 		}));
 
-		return json(filteredComments);
+		return json(result);
 
 	} catch (error) {
 		console.error('댓글 목록 조회 오류:', error);
@@ -54,14 +77,10 @@ export async function POST({ params, request }) {
 			return json({ error: '댓글 내용을 입력해주세요.' }, { status: 400 });
 		}
 
-		const dataSource = await getDataSource();
-		const commentRepository = dataSource.getRepository(Comment);
-		const postRepository = dataSource.getRepository(CommunityPost);
-
 		// 게시글 존재 확인
-		const post = await postRepository.findOne({
-			where: { id: parseInt(postId), isDeleted: false }
-		});
+		const [post] = await executeQuery(`
+			SELECT id FROM community_posts WHERE id = ? AND is_deleted = 0
+		`, [parseInt(postId)]);
 
 		if (!post) {
 			return json({ error: '게시글을 찾을 수 없습니다.' }, { status: 404 });
@@ -69,13 +88,10 @@ export async function POST({ params, request }) {
 
 		// 부모 댓글 확인 (대댓글인 경우)
 		if (parentId) {
-			const parentComment = await commentRepository.findOne({
-				where: { 
-					id: parseInt(parentId), 
-					postId: parseInt(postId),
-					isDeleted: false 
-				}
-			});
+			const [parentComment] = await executeQuery(`
+				SELECT id FROM comments 
+				WHERE id = ? AND post_id = ? AND is_deleted = 0
+			`, [parseInt(parentId), parseInt(postId)]);
 
 			if (!parentComment) {
 				return json({ error: '부모 댓글을 찾을 수 없습니다.' }, { status: 404 });
@@ -83,22 +99,38 @@ export async function POST({ params, request }) {
 		}
 
 		// 댓글 생성
-		const comment = commentRepository.create({
-			postId: parseInt(postId),
-			parentId: parentId ? parseInt(parentId) : null,
-			authorId: user.id,
-			content: content.trim()
-		});
-
-		const savedComment = await commentRepository.save(comment);
+		const result = await executeQuery(`
+			INSERT INTO comments (post_id, parent_id, author_id, content)
+			VALUES (?, ?, ?, ?)
+		`, [
+			parseInt(postId),
+			parentId ? parseInt(parentId) : null,
+			user.id,
+			content.trim()
+		]);
 
 		// 작성자 정보와 함께 조회
-		const commentWithAuthor = await commentRepository.findOne({
-			where: { id: savedComment.id },
-			relations: ['author']
-		});
+		const [commentWithAuthor] = await executeQuery(`
+			SELECT c.*, u.nickname, u.profile_image
+			FROM comments c
+			LEFT JOIN users u ON c.author_id = u.id
+			WHERE c.id = ?
+		`, [result.insertId]);
 
-		return json(commentWithAuthor, { status: 201 });
+		return json({
+			...commentWithAuthor,
+			postId: commentWithAuthor.post_id,
+			parentId: commentWithAuthor.parent_id,
+			authorId: commentWithAuthor.author_id,
+			isDeleted: !!commentWithAuthor.is_deleted,
+			createdAt: commentWithAuthor.created_at,
+			updatedAt: commentWithAuthor.updated_at,
+			author: {
+				id: commentWithAuthor.author_id,
+				nickname: commentWithAuthor.nickname || user.nickname,
+				profileImage: commentWithAuthor.profile_image || '/images/default-avatar.jpg'
+			}
+		}, { status: 201 });
 
 	} catch (error) {
 		console.error('댓글 작성 오류:', error);

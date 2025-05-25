@@ -1,8 +1,6 @@
-// 포인트 내역 조회 API
+// 포인트 내역 조회 API - MySQL2 버전
 import { json } from '@sveltejs/kit';
-import { getDataSource } from '$lib/server/data-source.js';
-import { PointTransaction, TransactionType } from '$lib/server/entities/PointTransaction.js';
-import { User } from '$lib/server/entities/User.js';
+import { executeQuery } from '$lib/server/database.js';
 import { getUserFromRequest } from '$lib/server/auth.js';
 
 export async function GET({ url, request }) {
@@ -18,36 +16,40 @@ export async function GET({ url, request }) {
 		const limit = parseInt(url.searchParams.get('limit') || '20');
 		const offset = (page - 1) * limit;
 
-		const dataSource = await getDataSource();
-		const pointRepository = dataSource.getRepository(PointTransaction);
-
-		// 쿼리 빌더 생성
-		let queryBuilder = pointRepository
-			.createQueryBuilder('point')
-			.where('point.userId = :userId', { userId: user.id });
+		// 기본 쿼리
+		let sql = 'SELECT * FROM point_transactions WHERE user_id = ?';
+		let params = [user.id];
 
 		// 타입 필터
-		if (type && Object.values(TransactionType).includes(type)) {
-			queryBuilder.andWhere('point.type = :type', { type });
+		if (type && ['earn', 'spend', 'withdraw'].includes(type)) {
+			sql += ' AND type = ?';
+			params.push(type);
 		}
 
-		// 정렬 및 페이징
-		queryBuilder
-			.orderBy('point.createdAt', 'DESC')
-			.offset(offset)
-			.limit(limit);
+		// 개수 조회용 쿼리
+		let countSql = sql.replace('SELECT *', 'SELECT COUNT(*) as total');
+		const [countResult] = await executeQuery(countSql, params);
+		const total = countResult?.total || 0;
 
-		const [transactions, total] = await queryBuilder.getManyAndCount();
+		// 정렬 및 페이징
+		sql += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+		params.push(limit, offset);
+
+		const transactions = await executeQuery(sql, params);
 
 		// 현재 사용자 포인트 조회
-		const userRepository = dataSource.getRepository(User);
-		const currentUser = await userRepository.findOne({
-			where: { id: user.id },
-			select: ['points']
-		});
+		const [currentUser] = await executeQuery(`
+			SELECT points FROM users WHERE id = ?
+		`, [user.id]);
 
 		return json({
-			transactions,
+			transactions: transactions.map(t => ({
+				...t,
+				userId: t.user_id,
+				referenceType: t.reference_type,
+				referenceId: t.reference_id,
+				createdAt: t.created_at
+			})),
 			currentPoints: currentUser?.points || 0,
 			pagination: {
 				page,

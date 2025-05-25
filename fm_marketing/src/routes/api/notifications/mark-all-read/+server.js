@@ -1,7 +1,6 @@
-// 모든 알림 읽음 처리 API
+// 모든 알림 읽음 처리 API - MySQL2 버전
 import { json } from '@sveltejs/kit';
-import { getDataSource } from '$lib/server/data-source.js';
-import { Notification } from '$lib/server/entities/Notification.js';
+import { executeQuery } from '$lib/server/database.js';
 import { getUserFromRequest } from '$lib/server/auth.js';
 
 export async function POST({ request }) {
@@ -12,18 +11,16 @@ export async function POST({ request }) {
 			return json({ error: '인증이 필요합니다.' }, { status: 401 });
 		}
 
-		const dataSource = await getDataSource();
-		const notificationRepository = dataSource.getRepository(Notification);
-
 		// 사용자의 모든 읽지 않은 알림을 읽음으로 처리
-		const result = await notificationRepository.update(
-			{ userId: user.id, isRead: false },
-			{ isRead: true }
-		);
+		const result = await executeQuery(`
+			UPDATE notifications 
+			SET is_read = 1 
+			WHERE user_id = ? AND is_read = 0
+		`, [user.id]);
 
 		return json({ 
 			message: '모든 알림을 읽음 처리했습니다.',
-			updatedCount: result.affected || 0
+			updatedCount: result.affectedRows || 0
 		});
 
 	} catch (error) {

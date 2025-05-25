@@ -1,8 +1,6 @@
-// 댓글 수정/삭제 API
+// 댓글 수정/삭제 API - MySQL2 버전
 import { json } from '@sveltejs/kit';
-import { getDataSource } from '$lib/server/data-source.js';
-import { Comment } from '$lib/server/entities/Comment.js';
-import { User, UserRole } from '$lib/server/entities/User.js';
+import { executeQuery } from '$lib/server/database.js';
 import { getUserFromRequest } from '$lib/server/auth.js';
 
 export async function PUT({ params, request }) {
@@ -20,38 +18,47 @@ export async function PUT({ params, request }) {
 			return json({ error: '댓글 내용을 입력해주세요.' }, { status: 400 });
 		}
 
-		const dataSource = await getDataSource();
-		const commentRepository = dataSource.getRepository(Comment);
-
 		// 댓글 존재 확인 및 권한 체크
-		const comment = await commentRepository.findOne({
-			where: { 
-				id: parseInt(commentId),
-				postId: parseInt(postId),
-				isDeleted: false 
-			},
-			select: ['id', 'authorId', 'content']
-		});
+		const [comment] = await executeQuery(`
+			SELECT id, author_id FROM comments 
+			WHERE id = ? AND post_id = ? AND is_deleted = 0
+		`, [parseInt(commentId), parseInt(postId)]);
 
 		if (!comment) {
 			return json({ error: '댓글을 찾을 수 없습니다.' }, { status: 404 });
 		}
 
-		if (user.role !== UserRole.ADMIN && user.id !== comment.authorId) {
+		if (user.role !== 'admin' && user.id !== comment.author_id) {
 			return json({ error: '수정 권한이 없습니다.' }, { status: 403 });
 		}
 
 		// 댓글 수정
-		await commentRepository.update(commentId, {
-			content: content.trim()
-		});
+		await executeQuery(`
+			UPDATE comments SET content = ? WHERE id = ?
+		`, [content.trim(), parseInt(commentId)]);
 
-		const updatedComment = await commentRepository.findOne({
-			where: { id: parseInt(commentId) },
-			relations: ['author']
-		});
+		// 수정된 댓글 조회
+		const [updatedComment] = await executeQuery(`
+			SELECT c.*, u.nickname, u.profile_image
+			FROM comments c
+			LEFT JOIN users u ON c.author_id = u.id
+			WHERE c.id = ?
+		`, [parseInt(commentId)]);
 
-		return json(updatedComment);
+		return json({
+			...updatedComment,
+			postId: updatedComment.post_id,
+			parentId: updatedComment.parent_id,
+			authorId: updatedComment.author_id,
+			isDeleted: !!updatedComment.is_deleted,
+			createdAt: updatedComment.created_at,
+			updatedAt: updatedComment.updated_at,
+			author: {
+				id: updatedComment.author_id,
+				nickname: updatedComment.nickname || '익명',
+				profileImage: updatedComment.profile_image || '/images/default-avatar.jpg'
+			}
+		});
 
 	} catch (error) {
 		console.error('댓글 수정 오류:', error);
@@ -68,29 +75,24 @@ export async function DELETE({ params, request }) {
 			return json({ error: '인증이 필요합니다.' }, { status: 401 });
 		}
 
-		const dataSource = await getDataSource();
-		const commentRepository = dataSource.getRepository(Comment);
-
 		// 댓글 존재 확인 및 권한 체크
-		const comment = await commentRepository.findOne({
-			where: { 
-				id: parseInt(commentId),
-				postId: parseInt(postId),
-				isDeleted: false 
-			},
-			select: ['id', 'authorId']
-		});
+		const [comment] = await executeQuery(`
+			SELECT id, author_id FROM comments 
+			WHERE id = ? AND post_id = ? AND is_deleted = 0
+		`, [parseInt(commentId), parseInt(postId)]);
 
 		if (!comment) {
 			return json({ error: '댓글을 찾을 수 없습니다.' }, { status: 404 });
 		}
 
-		if (user.role !== UserRole.ADMIN && user.id !== comment.authorId) {
+		if (user.role !== 'admin' && user.id !== comment.author_id) {
 			return json({ error: '삭제 권한이 없습니다.' }, { status: 403 });
 		}
 
 		// 소프트 삭제
-		await commentRepository.update(commentId, { isDeleted: true });
+		await executeQuery(`
+			UPDATE comments SET is_deleted = 1 WHERE id = ?
+		`, [parseInt(commentId)]);
 
 		return json({ message: '댓글이 삭제되었습니다.' });
 

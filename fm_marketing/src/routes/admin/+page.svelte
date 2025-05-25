@@ -3,7 +3,7 @@
   import { onMount } from 'svelte';
   import { statsApi } from '$lib/utils/api.js';
   import { userStore } from '$lib/stores/userStore.js';
-  import { formatKoreanDate, formatRelativeTime } from '$lib/utils/date.js';
+  import { formatKoreanDate, getRelativeTime } from '$lib/utils/date.js';
   
   // 대시보드 데이터
   let dashboardData = {
@@ -174,7 +174,7 @@
               </div>
               <div class="activity-content">
                 <p class="activity-main">{user.name || user.nickname || user.username}</p>
-                <p class="activity-sub">{user.email} · {formatRelativeTime(user.createdAt)}</p>
+                <p class="activity-sub">{user.email} · {getRelativeTime(user.createdAt)}</p>
               </div>
               <a href="/admin/users/{user.id}" class="activity-link">
                 상세보기
@@ -242,7 +242,7 @@
               <div class="activity-content">
                 <p class="activity-main">{application.userName} → {application.experienceTitle}</p>
                 <p class="activity-sub">
-                  {formatRelativeTime(application.createdAt)} · 
+                  {getRelativeTime(application.createdAt)} · 
                   <span class="status-badge {application.status}">
                     {application.status === 'pending' ? '대기중' : 
                      application.status === 'approved' ? '승인' : '거절'}
@@ -279,7 +279,7 @@
               <div class="activity-content">
                 <p class="activity-main">{post.title}</p>
                 <p class="activity-sub">
-                  {post.authorName} · {post.category} · {formatRelativeTime(post.createdAt)}
+                  {post.authorName} · {post.category} · {getRelativeTime(post.createdAt)}
                 </p>
               </div>
               <a href="/admin/community/{post.id}" class="activity-link">

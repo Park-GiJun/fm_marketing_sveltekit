@@ -1,9 +1,6 @@
-// 포인트 환급 신청 API
+// 포인트 환급 신청 API - MySQL2 버전
 import { json } from '@sveltejs/kit';
-import { getDataSource } from '$lib/server/data-source.js';
-import { PointTransaction, TransactionType } from '$lib/server/entities/PointTransaction.js';
-import { User } from '$lib/server/entities/User.js';
-import { Notification, NotificationPriority } from '$lib/server/entities/Notification.js';
+import { executeQuery } from '$lib/server/database.js';
 import { getUserFromRequest } from '$lib/server/auth.js';
 
 export async function POST({ request }) {
@@ -25,55 +22,55 @@ export async function POST({ request }) {
 			return json({ error: '계좌 정보를 모두 입력해주세요.' }, { status: 400 });
 		}
 
-		const dataSource = await getDataSource();
-		const userRepository = dataSource.getRepository(User);
-		const pointRepository = dataSource.getRepository(PointTransaction);
-
 		// 현재 사용자 포인트 확인
-		const currentUser = await userRepository.findOne({
-			where: { id: user.id },
-			select: ['id', 'points']
-		});
+		const [currentUser] = await executeQuery(`
+			SELECT id, points FROM users WHERE id = ?
+		`, [user.id]);
 
 		if (!currentUser || currentUser.points < amount) {
 			return json({ error: '보유 포인트가 부족합니다.' }, { status: 400 });
 		}
 
 		// 트랜잭션으로 환급 처리
-		const result = await dataSource.transaction(async manager => {
+		try {
+			await executeQuery('START TRANSACTION');
+
 			// 포인트 차감
-			const pointTransaction = manager.create(PointTransaction, {
-				userId: user.id,
-				type: TransactionType.WITHDRAW,
-				amount: amount,
-				description: `포인트 환급 신청 (${accountInfo.bank} ${accountInfo.accountNumber})`,
-				referenceType: 'withdrawal'
-			});
-			const savedTransaction = await manager.save(pointTransaction);
+			const transactionResult = await executeQuery(`
+				INSERT INTO point_transactions (user_id, type, amount, description, reference_type)
+				VALUES (?, 'withdraw', ?, ?, 'withdrawal')
+			`, [
+				user.id,
+				amount,
+				`포인트 환급 신청 (${accountInfo.bank} ${accountInfo.accountNumber})`
+			]);
 
 			// 사용자 포인트 업데이트
-			await manager.update(User, { id: user.id }, { 
-				points: () => `points - ${amount}` 
-			});
+			await executeQuery(`
+				UPDATE users SET points = points - ? WHERE id = ?
+			`, [amount, user.id]);
 
 			// 환급 신청 알림 생성
-			const notification = manager.create(Notification, {
-				userId: user.id,
-				type: 'withdrawal_request',
-				title: '포인트 환급 신청 완료',
-				message: `${amount.toLocaleString()}P 환급 신청이 완료되었습니다. 처리까지 3-5일 소요됩니다.`,
-				priority: NotificationPriority.MEDIUM
-			});
-			await manager.save(notification);
+			await executeQuery(`
+				INSERT INTO notifications (user_id, type, title, message, priority)
+				VALUES (?, 'withdrawal_request', '포인트 환급 신청 완료', ?, 'medium')
+			`, [
+				user.id,
+				`${amount.toLocaleString()}P 환급 신청이 완료되었습니다. 처리까지 3-5일 소요됩니다.`
+			]);
 
-			return savedTransaction;
-		});
+			await executeQuery('COMMIT');
 
-		return json({ 
-			message: '포인트 환급 신청이 완료되었습니다.',
-			transactionId: result.id,
-			amount
-		}, { status: 201 });
+			return json({ 
+				message: '포인트 환급 신청이 완료되었습니다.',
+				transactionId: transactionResult.insertId,
+				amount
+			}, { status: 201 });
+
+		} catch (error) {
+			await executeQuery('ROLLBACK');
+			throw error;
+		}
 
 	} catch (error) {
 		console.error('포인트 환급 신청 오류:', error);
@@ -93,21 +90,30 @@ export async function GET({ url, request }) {
 		const limit = parseInt(url.searchParams.get('limit') || '10');
 		const offset = (page - 1) * limit;
 
-		const dataSource = await getDataSource();
-		const pointRepository = dataSource.getRepository(PointTransaction);
-
 		// 환급 내역 조회
-		const [withdrawals, total] = await pointRepository
-			.createQueryBuilder('point')
-			.where('point.userId = :userId', { userId: user.id })
-			.andWhere('point.type = :type', { type: TransactionType.WITHDRAW })
-			.orderBy('point.createdAt', 'DESC')
-			.offset(offset)
-			.limit(limit)
-			.getManyAndCount();
+		const withdrawals = await executeQuery(`
+			SELECT * FROM point_transactions 
+			WHERE user_id = ? AND type = 'withdraw'
+			ORDER BY created_at DESC
+			LIMIT ? OFFSET ?
+		`, [user.id, limit, offset]);
+
+		// 전체 개수 조회
+		const [countResult] = await executeQuery(`
+			SELECT COUNT(*) as total FROM point_transactions 
+			WHERE user_id = ? AND type = 'withdraw'
+		`, [user.id]);
+
+		const total = countResult?.total || 0;
 
 		return json({
-			withdrawals,
+			withdrawals: withdrawals.map(w => ({
+				...w,
+				userId: w.user_id,
+				referenceType: w.reference_type,
+				referenceId: w.reference_id,
+				createdAt: w.created_at
+			})),
 			pagination: {
 				page,
 				limit,
