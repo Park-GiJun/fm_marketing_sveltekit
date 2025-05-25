@@ -7,6 +7,7 @@
   import MainLayout from '$lib/components/layout/MainLayout.svelte';
   import Button from '$lib/components/common/Button.svelte';
   import Badge from '$lib/components/common/Badge.svelte';
+  import ImageGallery from '$lib/components/common/ImageGallery.svelte';
   import { formatKoreanDate, getRelativeTime } from '$lib/utils/date.js';
   
   // 상태 변수
@@ -224,25 +225,12 @@
         <!-- 리뷰 이미지 갤러리 -->
         {#if review.images && review.images.length > 0}
           <section class="image-gallery">
-            <div class="main-image">
-              <img src={review.images[0] || '/images/placeholder.jpg'} alt="리뷰 메인 이미지" />
-            </div>
-            
-            {#if review.images.length > 1}
-              <div class="thumbnail-grid">
-                {#each review.images.slice(1, 5) as image, i}
-                  <div class="thumbnail">
-                    <img src={image || '/images/placeholder.jpg'} alt={`리뷰 이미지 ${i + 2}`} />
-                  </div>
-                {/each}
-                
-                {#if review.images.length > 5}
-                  <div class="more-images">
-                    <span>+{review.images.length - 5}</span>
-                  </div>
-                {/if}
-              </div>
-            {/if}
+            <ImageGallery 
+              images={review.images}
+              aspectRatio="16:9"
+              columns={3}
+              showLightbox={true}
+            />
           </section>
         {/if}
         

@@ -6,6 +6,7 @@
   import { userStore } from '$lib/stores/userStore.js';
   import MainLayout from '$lib/components/layout/MainLayout.svelte';
   import Button from '$lib/components/common/Button.svelte';
+  import ImageUpload from '$lib/components/common/ImageUpload.svelte';
   
   let isAuthenticated = false;
   let user = null;
@@ -14,7 +15,8 @@
     title: '',
     category: '자유',
     content: '',
-    tags: ''
+    tags: '',
+    images: []
   };
   
   let errors = {};
@@ -53,7 +55,7 @@
           nickname: user?.nickname || '테스트유저',
           profileImage: user?.profileImage || '/images/default-avatar.jpg'
         },
-        images: []
+        images: formData.images
       };
       
       await communityStore.createPost(postData);
@@ -63,6 +65,10 @@
     } finally {
       loading = false;
     }
+  }
+  // 이미지 변경 핸들러
+  function handleImageChange(images) {
+    formData.images = images;
   }
   
   onMount(() => {
@@ -139,6 +145,16 @@
           id="tags" 
           bind:value={formData.tags} 
           placeholder="태그를 쉼표로 구분하여 입력하세요 (예: 체험단, 후기, 서울)"
+        />
+      </div>
+      
+      <div class="form-group">
+        <label>이미지</label>
+        <ImageUpload 
+          images={formData.images}
+          maxImages={5}
+          uploadType="community"
+          on:change={(e) => handleImageChange(e.detail)}
         />
       </div>
       

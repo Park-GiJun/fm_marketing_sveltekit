@@ -6,6 +6,7 @@
   import { reviewApi } from '$lib/utils/api.js';
   import { formatKoreanDate, formatDDay } from '$lib/utils/date.js';
   import { toast } from '$lib/stores/toastStore.js';
+  import ImageUpload from '$lib/components/common/ImageUpload.svelte';
   
   let experienceId = $page.params.id;
   let experience = null;
@@ -32,7 +33,8 @@
     requirements: '',
     companyName: '',
     contactInfo: '',
-    tags: []
+    tags: [],
+    images: []
   };
   
   // 카테고리 옵션
@@ -75,7 +77,8 @@
         requirements: experience.requirements || '',
         companyName: experience.companyName || '',
         contactInfo: experience.contactInfo || '',
-        tags: experience.tags || []
+        tags: experience.tags || [],
+        images: experience.images || []
       };
       
       // 신청자 목록 로드
@@ -150,6 +153,11 @@
   // 태그 삭제
   function removeTag(tag) {
     formData.tags = formData.tags.filter(t => t !== tag);
+  }
+  
+  // 이미지 변경 핸들러
+  function handleImageChange(images) {
+    formData.images = images;
   }
   
   onMount(() => {
@@ -406,6 +414,22 @@
                 />
               {/if}
             </div>
+          </div>
+        </div>
+        
+        <!-- 이미지 업로드 섹션 -->
+        <div class="section">
+          <h2 class="section-title">이미지</h2>
+          
+          <div class="form-group">
+            <label>체험단 이미지</label>
+            <ImageUpload 
+              images={formData.images}
+              maxImages={5}
+              uploadType="experience"
+              disabled={!isEditMode}
+              on:change={(e) => handleImageChange(e.detail)}
+            />
           </div>
         </div>
       </div>
